@@ -34,12 +34,14 @@ ALWAYS delegate to subagents. Parent model is paid — minimize parent token usa
 | Implement changes | `worker` | Local model, edits files |
 | Run tests | `test-runner` | Local model, bash only |
 | Fetch URL/web content | `web-fetcher` | Local model, fetch only |
+| YouTube links | `youtube-summarizer` | Auto-summarize any youtube.com/watch or youtu.be link on sight |
 | Review code | `reviewer` | Built-in, still cheaper than parent doing it inline |
 
 Rules:
 - Do NOT read files yourself to understand code. Use `scout`.
 - Do NOT edit files yourself. Use `worker`.
 - Do NOT fetch URLs yourself. Use `web-fetcher`.
+- ANY YouTube link (youtube.com/watch, youtu.be) → immediately delegate to `youtube-summarizer`. No exceptions. No manual summary. Auto-fire.
 - Only handle: clarifying questions, user conversation, orchestration decisions.
 - When in doubt, delegate. If subagent fails, then parent handles it.
 - Use `context: "fork"` for worker/oracle to share parent context cheaply.

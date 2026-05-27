@@ -1,8 +1,8 @@
 # pi-config
 
-Pi coding agent configuration — sub-agents, extensions, skills, MCP servers.
+Pi coding agent configuration — sub-agents, extensions, skills, MCP servers, settings.
 
-Symlinked into `~/.pi/agent/`. Edits here take effect immediately.
+`~/.pi/agent` symlinks to `pi-agent/` in this repo. Edits take effect immediately. `.gitignore` excludes all sensitive files.
 
 ## Structure
 
@@ -12,18 +12,15 @@ pi-agent/
 ├── extensions/               # TypeScript extensions
 ├── skills/                   # Pi-native skills
 ├── bin/                      # Custom scripts
+├── pi-hermes-memory/skills/  # Legacy hermes-format skills
 ├── caveman.json              # Caveman mode config
 ├── mcp.json                  # MCP server definitions
 ├── settings.json             # Main settings (non-sensitive)
 ├── models.json               # Custom model definitions
 └── pi-codex-conversion.json  # Codex conversion feature flags
-pi-hermes-memory/
-└── skills/         # Legacy hermes-format skills
 ```
 
-## What's NOT here
-
-Sensitive files excluded intentionally — never committed:
+## What's NOT tracked (.gitignore)
 
 | Excluded | Reason |
 |----------|--------|
@@ -43,7 +40,7 @@ cd ~/repos/pi-config
 ./install.sh
 ```
 
-`install.sh` creates symlinks from `~/.pi/agent/` → this repo. Existing files backed up to `~/.pi/agent.backup.<timestamp>/`.
+`install.sh` creates one symlink: `~/.pi/agent → pi-agent/`. Existing `~/.pi/agent` backed up to `~/.pi/agent.backup.<timestamp>/`.
 
 ## Daily use
 
@@ -52,6 +49,6 @@ No workflow change. Edit files in `~/.pi/agent/` (follows symlink to repo). Comm
 ```bash
 cd ~/repos/pi-config
 git add -A
-git commit -m "whatever changed"
+git commit -m "what changed"
 git push
 ```

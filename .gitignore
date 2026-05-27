@@ -1,5 +1,27 @@
-# Pi agent — tracked via symlinks from ~/.pi/agent/
-# This gitignore covers the repo itself; see install.sh for bootstrap
+# Sensitive: auth tokens
+pi-agent/auth.json
 
-# Nothing to ignore in this repo — all committed files are intentional
-# Sensitive files are excluded by never being added to the repo
+# Session data (conversation logs, run history)
+pi-agent/sessions/
+pi-agent/run-history.jsonl
+
+# Memory databases (session history, personal notes)
+pi-agent/memory/
+pi-agent/pi-hermes-memory/sessions.db
+pi-agent/pi-hermes-memory/sessions.db-shm
+pi-agent/pi-hermes-memory/sessions.db-wal
+pi-agent/pi-hermes-memory/failures.md
+pi-agent/pi-hermes-memory/MEMORY.md
+pi-agent/pi-hermes-memory/USER.md
+pi-agent/pi-hermes-memory/.skills-migrated-*
+
+# Per-project memory (may contain sensitive context)
+pi-agent/projects-memory/
+
+# MCP caches (may cache tool calls with tokens)
+pi-agent/mcp-cache.json
+pi-agent/mcp-npx-cache.json
+pi-agent/mcp-onboarding.json
+
+# Nix store symlink (not portable)
+pi-agent/SYSTEM.md

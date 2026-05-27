@@ -6,7 +6,6 @@ pi-agent/sessions/
 pi-agent/run-history.jsonl
 
 # Memory databases (session history, personal notes)
-pi-agent/memory/
 pi-agent/pi-hermes-memory/sessions.db
 pi-agent/pi-hermes-memory/sessions.db-shm
 pi-agent/pi-hermes-memory/sessions.db-wal

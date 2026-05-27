@@ -1,6 +1,8 @@
 ---
 name: youtube-summarizer
 description: |
+  YouTube video summarizer. Extracts transcript from youtube.com/watch or youtu.be links,
+  then summarizes key points. Use for ANY YouTube link — auto-fire, no manual summary.
 tools: bash
 model: deepseek-v4-flash
 systemPromptMode: replace

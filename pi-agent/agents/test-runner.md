@@ -1,6 +1,8 @@
 ---
 name: test-runner
 description: |
+  Test execution and failure extraction. Runs test commands, parses output,
+  returns only failures grouped by file. Never include passing tests.
 tools: bash, read
 model: deepseek-v4-flash
 systemPromptMode: replace

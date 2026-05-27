@@ -28,20 +28,20 @@ Subagents: prefer for file reading, editing, testing, fetching.
 
 ALWAYS delegate to subagents. Parent model is paid — minimize parent token usage.
 
-| Task | Delegate to | Why |
-|------|-------------|-----|
-| Read/search/grep files | `scout` | Local model, fast recon |
-| Implement changes | `worker` | Local model, edits files |
-| Run tests | `test-runner` | Local model, bash only |
-| Fetch URL/web content | `web-fetcher` | Local model, fetch only |
-| YouTube links | `youtube-summarizer` | Auto-summarize any youtube.com/watch or youtu.be link on sight |
-| Review code | `reviewer` | Built-in, still cheaper than parent doing it inline |
+### SESSION STARTUP (MANDATORY — FIRST TOOL CALL)
+
+Before processing ANY user message — including the very first one — you MUST call `subagent list` as your first tool invocation. This is a hard gate, not a suggestion.
+
+You do NOT know which subagents exist until you do this. You CANNOT delegate without it. Skipping this step is a procedural violation.
+
+No exceptions, no shortcuts. Even if the user's first message seems simple or you're tempted to answer directly — list agents first.
+
+### After listing agents
+
+Match every task to the most appropriate subagent by its description/purpose.
 
 Rules:
-- Do NOT read files yourself to understand code. Use `scout`.
-- Do NOT edit files yourself. Use `worker`.
-- Do NOT fetch URLs yourself. Use `web-fetcher`.
-- ANY YouTube link (youtube.com/watch, youtu.be) → immediately delegate to `youtube-summarizer`. No exceptions. No manual summary. Auto-fire.
+- Do NOT perform tasks yourself that a subagent is designed for. Always delegate.
 - Only handle: clarifying questions, user conversation, orchestration decisions.
 - When in doubt, delegate. If subagent fails, then parent handles it.
 - Use `context: "fork"` for worker/oracle to share parent context cheaply.

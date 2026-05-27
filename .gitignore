@@ -21,6 +21,3 @@ pi-agent/projects-memory/
 pi-agent/mcp-cache.json
 pi-agent/mcp-npx-cache.json
 pi-agent/mcp-onboarding.json
-
-# Nix store symlink (not portable)
-pi-agent/SYSTEM.md

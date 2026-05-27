@@ -10,7 +10,6 @@
     "npm:pi-lmstudio",
     "npm:pi-ask-user",
     "npm:pi-subagents",
-    "npm:pi-context",
     "npm:pi-go-bars",
     "npm:pi-caveman",
     "npm:@howaboua/pi-codex-conversion",

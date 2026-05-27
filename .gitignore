@@ -1,0 +1,5 @@
+# Pi agent — tracked via symlinks from ~/.pi/agent/
+# This gitignore covers the repo itself; see install.sh for bootstrap
+
+# Nothing to ignore in this repo — all committed files are intentional
+# Sensitive files are excluded by never being added to the repo

@@ -1,0 +1,34 @@
+{
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "ollama",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": false
+      },
+      "models": [
+        {
+          "id": "gemma4-tool",
+          "name": "Gemma 4 8B Tool (Ollama)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        },
+        {
+          "id": "qwen3.6:27b",
+          "name": "Qwen 3.6 27B Heavy (Ollama)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 131072,
+          "maxTokens": 16384,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
+        }
+      ]
+    }
+  }
+}

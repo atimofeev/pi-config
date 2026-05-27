@@ -1,0 +1,37 @@
+{
+  "defaultModel": "deepseek-v4-pro",
+  "defaultProvider": "opencode-go",
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": true,
+  "lastChangelogVersion": "0.74.0",
+  "packages": [
+    "npm:pi-mcp-adapter",
+    "npm:@ifi/oh-pi-themes",
+    "npm:pi-lmstudio",
+    "npm:pi-ask-user",
+    "npm:pi-subagents",
+    "npm:pi-context",
+    "npm:pi-go-bars",
+    "npm:pi-caveman",
+    "npm:@howaboua/pi-codex-conversion",
+    "npm:pi-hermes-memory",
+    "npm:@juicesharp/rpiv-todo"
+  ],
+  "theme": "catppuccin-mocha",
+  "treeFilterMode": "default",
+  "subagents": {
+    "agentOverrides": {
+      "scout": {
+        "model": "deepseek-v4-flash"
+      },
+      "worker": {
+        "model": "deepseek-v4-pro"
+      }
+    }
+  },
+  "enableInstallTelemetry": false,
+  "autocompleteMaxVisible": 10,
+  "terminal": {
+    "showTerminalProgress": false
+  }
+}

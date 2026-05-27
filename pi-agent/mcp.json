@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "kubernetes": {
+      "args": [
+        "mcp-server-kubernetes",
+        "--kubeconfig",
+        "~/.kube/homelab.yml"
+      ],
+      "command": "npx",
+      "directTools": true
+    },
+    "nixos": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "ghcr.io/utensils/mcp-nixos:2.4.1"
+      ],
+      "command": "docker",
+      "directTools": true
+    },
+    "terraform": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "hashicorp/terraform-mcp-server:0.5.1"
+      ],
+      "command": "docker",
+      "directTools": true
+    }
+  }
+}

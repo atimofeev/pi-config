@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# yt-summarize — extract YouTube transcript for summarization
+# Outputs: TITLE line + cleaned transcript to stdout
+# Exit codes:
+#   0 - success
+#   1 - no transcript available
+#   2 - rate limited (try later)
+#   3 - extraction error
+# Usage: yt-summarize <youtube-url>
+
+set -euo pipefail
+shopt -s nullglob
+
+[[ $# -ge 1 ]] || { echo "USAGE: yt-summarize <youtube-url>" >&2; exit 3; }
+
+url="$1"
+tmp="$(mktemp -d)"
+cleanup() { rm -rf "$tmp"; }
+trap cleanup EXIT
+
+# yt-dlp: use nix if not in PATH
+if command -v yt-dlp &>/dev/null; then
+    YT_DLP=(yt-dlp)
+else
+    YT_DLP=(nix run nixpkgs#yt-dlp --)
+fi
+
+# --- Step 1: Get title ---
+"${YT_DLP[@]}" --print "%(title)s" "$url" > "$tmp/title.txt" 2>/dev/null || true
+title="$(head -n 1 "$tmp/title.txt" 2>/dev/null || echo "Unknown Title")"
+
+# --- Step 2: Download subtitles (try English → Russian → many) ---
+try_download() {
+    local lang="$1"
+    "${YT_DLP[@]}" \
+        --skip-download \
+        --write-auto-subs \
+        --sub-langs "$lang" \
+        --sub-format "vtt" \
+        --ignore-errors \
+        -o "$tmp/%(id)s.%(ext)s" \
+        "$url" > /dev/null 2> "$tmp/err" || true
+}
+
+find_sub() {
+    for f in "$tmp"/*.vtt "$tmp"/*.srt; do
+        [[ -f "$f" ]] || continue
+        [[ "$f" == *.live_chat.* ]] && continue
+        echo "$f"
+        return 0
+    done
+    return 1
+}
+
+rate_limited=0
+for lang in "en" "ru" "en,en-US,en-GB,ru,fr,de,es,pt,it,ja,ko,zh"; do
+    try_download "$lang"
+    if sub=$(find_sub); then
+        break
+    fi
+    if grep -qi "429\|too many requests\|rate limit" "$tmp/err" 2>/dev/null; then
+        rate_limited=1
+        continue  # try next language
+    fi
+done
+
+if ! sub=$(find_sub); then
+    if [[ "$rate_limited" -eq 1 ]]; then
+        echo "ERROR: YouTube rate limited on all languages. Wait a few minutes and retry." >&2
+        exit 2
+    fi
+    echo "ERROR: No transcript available for this video" >&2
+    exit 1
+fi
+
+# --- Step 3: Clean transcript ---
+sed -E \
+    -e '/^WEBVTT/d' \
+    -e '/^Kind:/Id' \
+    -e '/^Language:/Id' \
+    -e '/^NOTE[[:space:]]/d' \
+    -e '/^[0-9]+$/d' \
+    -e '/^[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+ --> /d' \
+    -e '/align:/Id' \
+    -e 's/<[^>]+>//g' \
+    -e 's/\{[^}]+\}//g' \
+    -e '/^[[:space:]]*$/d' \
+    "$sub" | awk '!seen[$0]++' > "$tmp/clean.txt"
+
+# --- Step 4: Output ---
+line_count="$(wc -l < "$tmp/clean.txt")"
+
+echo "TITLE:"
+echo "$title"
+echo "---TRANSCRIPT---"
+
+if [[ "$line_count" -le 600 ]]; then
+    cat "$tmp/clean.txt"
+else
+    head -n 250 "$tmp/clean.txt"
+    echo ""
+    echo "[... $(( line_count - 500 )) lines omitted from middle ...]"
+    echo ""
+    tail -n 250 "$tmp/clean.txt"
+fi

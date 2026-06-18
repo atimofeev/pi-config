@@ -3,18 +3,18 @@
   "defaultProvider": "opencode-go",
   "defaultThinkingLevel": "high",
   "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.74.0",
+  "lastChangelogVersion": "0.79.6",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",
     "npm:pi-lmstudio",
-    "npm:pi-ask-user",
     "npm:pi-subagents",
     "npm:pi-go-bars",
     "npm:pi-caveman",
     "npm:@howaboua/pi-codex-conversion",
     "npm:pi-hermes-memory",
-    "npm:@juicesharp/rpiv-todo"
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-ask-user-question"
   ],
   "theme": "catppuccin-mocha",
   "treeFilterMode": "default",

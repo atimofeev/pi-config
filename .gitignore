@@ -1,3 +1,6 @@
+# npm install artifacts (node_modules, etc.)
+pi-agent/npm/
+
 # Sensitive: auth tokens
 pi-agent/auth.json
 

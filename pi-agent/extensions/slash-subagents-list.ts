@@ -175,6 +175,7 @@ function discoverAll(cwd: string): {
   // Builtin agents
   // The pi-subagents package might be at different paths. Check a few.
   const builtinCandidates = [
+    path.join(getAgentDir(), "npm", "node_modules", "pi-subagents", "agents"),
     path.join(getAgentDir(), "..", "npm", "lib", "node_modules", "pi-subagents", "agents"),
     path.join(os.homedir(), ".pi", "npm", "lib", "node_modules", "pi-subagents", "agents"),
   ];

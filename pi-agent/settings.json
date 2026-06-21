@@ -1,9 +1,9 @@
 {
-  "defaultModel": "deepseek-v4-pro",
+  "defaultModel": "glm-5.2",
   "defaultProvider": "opencode-go",
   "defaultThinkingLevel": "high",
   "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.79.6",
+  "lastChangelogVersion": "0.79.7",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",

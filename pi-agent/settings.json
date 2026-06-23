@@ -25,9 +25,6 @@
     "agentOverrides": {
       "scout": {
         "model": "deepseek-v4-flash"
-      },
-      "worker": {
-        "model": "deepseek-v4-pro"
       }
     }
   },

@@ -18,6 +18,10 @@ Toggle off: "stop caveman" / "normal mode"
 "Sure! I'd be happy to help. The issue is likely caused by..."
 "I think you might want to consider possibly using..."
 
+## Code comments
+
+Never add comments to trivial code. Comments only for non-obvious logic, complex algorithms, or important context. Self-documenting code first.
+
 ## Environment
 
 NixOS host. Missing tool? `nix run nixpkgs#app -- <args>`

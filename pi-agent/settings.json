@@ -1,6 +1,6 @@
 {
-  "defaultModel": "glm-5.2",
-  "defaultProvider": "opencode-go",
+  "defaultModel": "gpt-5.5",
+  "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "high",
   "hideThinkingBlock": true,
   "lastChangelogVersion": "0.79.7",
@@ -11,7 +11,7 @@
     "npm:pi-subagents",
     "npm:pi-go-bars",
     "npm:pi-caveman",
-    "npm:@howaboua/pi-codex-conversion",
+    "npm:@howaboua/pi-codex-conversion@1.5.21",
     "npm:pi-hermes-memory",
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-ask-user-question",

@@ -1,23 +1,28 @@
 # pi-config
 
-Pi coding agent configuration — sub-agents, extensions, skills, MCP servers, settings.
+Pi coding agent configuration — sub-agents, extensions, skills, MCP servers, settings, memory.
 
 `~/.pi/agent` symlinks to `pi-agent/` in this repo. Edits take effect immediately. `.gitignore` excludes all sensitive files.
 
 ## Structure
 
 ```
-pi-agent/
-├── agents/                   # Sub-agent definitions (markdown manifests)
-├── extensions/               # TypeScript extensions
-├── skills/                   # Pi-native skills
-├── bin/                      # Custom scripts
-├── pi-hermes-memory/skills/  # Legacy hermes-format skills
-├── caveman.json              # Caveman mode config
-├── mcp.json                  # MCP server definitions
-├── settings.json             # Main settings (non-sensitive)
-├── models.json               # Custom model definitions
-└── pi-codex-conversion.json  # Codex conversion feature flags
+pi-config/
+├── AGENTS.md                     # AI agent instructions for this repo
+├── README.md
+├── install.sh
+└── pi-agent/                     # ~/.pi/agent symlinks here
+    ├── SYSTEM.md                 # Response style, environment, delegation policy
+    ├── settings.json             # Main settings (non-sensitive)
+    ├── models.json               # Custom model definitions
+    ├── mcp.json                  # MCP server definitions
+    ├── caveman.json              # Caveman mode config
+    ├── pi-codex-conversion.json  # Codex conversion feature flags
+    ├── agents/                   # Sub-agent definitions (markdown manifests)
+    ├── extensions/               # TypeScript TUI extensions
+    ├── bin/                      # Custom shell scripts
+    └── pi-hermes-memory/
+        └── skills/               # Procedural skills (committed)
 ```
 
 ## What's NOT tracked (.gitignore)
@@ -27,9 +32,10 @@ pi-agent/
 | `auth.json` | API tokens (OAuth JWT + API keys) |
 | `sessions/` | Full conversation logs |
 | `run-history.jsonl` | Run history with prompts |
-| `memory/`, `pi-hermes-memory/sessions.db*` | Session databases |
+| `pi-hermes-memory/sessions.db*` | Session databases |
 | `pi-hermes-memory/{USER,MEMORY,failures}.md` | Personal/system memory |
-| `mcp-cache.json`, `mcp-npx-cache.json` | Tool caches |
+| `npm/` | Node modules (installed by pi-agent at runtime) |
+| `mcp-cache.json`, `mcp-npx-cache.json`, `mcp-onboarding.json` | MCP tool caches |
 | `projects-memory/` | Per-project session memory |
 
 ## Bootstrap on new machine

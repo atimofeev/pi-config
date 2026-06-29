@@ -1,9 +1,9 @@
 {
-  "defaultModel": "gpt-5.5",
-  "defaultProvider": "openai-codex",
-  "defaultThinkingLevel": "high",
+  "defaultModel": "deepseek-v4-pro",
+  "defaultProvider": "opencode-go",
+  "defaultThinkingLevel": "xhigh",
   "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.79.7",
+  "lastChangelogVersion": "0.80.2",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",
@@ -25,6 +25,27 @@
     "agentOverrides": {
       "scout": {
         "model": "deepseek-v4-flash"
+      },
+      "planner": {
+        "model": "deepseek-v4-pro"
+      },
+      "worker": {
+        "model": "deepseek-v4-pro"
+      },
+      "reviewer": {
+        "model": "deepseek-v4-pro"
+      },
+      "context-builder": {
+        "model": "deepseek-v4-pro"
+      },
+      "researcher": {
+        "model": "deepseek-v4-pro"
+      },
+      "delegate": {
+        "model": "deepseek-v4-pro"
+      },
+      "oracle": {
+        "model": "deepseek-v4-pro"
       }
     }
   },

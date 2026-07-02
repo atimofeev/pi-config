@@ -17,7 +17,9 @@
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
-    "npm:@juicesharp/rpiv-btw"
+    "npm:@juicesharp/rpiv-btw",
+    "npm:pi-intercom",
+    "npm:pi-prompt-template-model"
   ],
   "theme": "catppuccin-mocha",
   "treeFilterMode": "default",

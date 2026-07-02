@@ -2,6 +2,17 @@
   "defaultModel": "deepseek-v4-pro",
   "defaultProvider": "opencode-go",
   "defaultThinkingLevel": "xhigh",
+  "enabledModels": [
+    "opencode-go/deepseek-v4-pro",
+    "opencode-go/deepseek-v4-flash",
+    "opencode-go/glm-5.2",
+    "openai-codex/gpt-5.5",
+    "openrouter/openrouter/free",
+    "amazon-bedrock/global.anthropic.claude-fable-5",
+    "amazon-bedrock/global.anthropic.claude-opus-4-8",
+    "amazon-bedrock/global.anthropic.claude-sonnet-4-6",
+    "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+  ],
   "hideThinkingBlock": true,
   "lastChangelogVersion": "0.80.2",
   "packages": [

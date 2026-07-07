@@ -78,6 +78,36 @@ function getAgentDir(): string {
   return process.env.PI_CODING_AGENT_DIR || path.join(os.homedir(), ".pi", "agent");
 }
 
+function loadSettings(): Record<string, unknown> | null {
+  const settingsPath = path.join(getAgentDir(), "settings.json");
+  try {
+    return JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function resolveBuiltinModel(agentName: string, settings: Record<string, unknown> | null): string | undefined {
+  if (!settings) return undefined;
+  const subagents = settings.subagents as Record<string, unknown> | undefined;
+  if (!subagents) return undefined;
+
+  // Check agent-specific override
+  const overrides = subagents.agentOverrides as Record<string, Record<string, string>> | undefined;
+  if (overrides?.[agentName]?.model) {
+    const model = overrides[agentName]!.model!;
+    const provider = (settings.defaultProvider as string) || "opencode-go";
+    return model.includes("/") ? model : `${provider}/${model}`;
+  }
+
+  // Use subagents defaultModel or top-level defaultModel
+  const defaultModel = (subagents.defaultModel as string) || (settings.defaultModel as string);
+  if (!defaultModel) return undefined;
+
+  const provider = (settings.defaultProvider as string) || "opencode-go";
+  return defaultModel.includes("/") ? defaultModel : `${provider}/${defaultModel}`;
+}
+
 function findNearestProjectRoot(cwd: string): string | null {
   let dir = cwd;
   while (true) {
@@ -169,6 +199,8 @@ function discoverAll(cwd: string): {
   agents: AgentMeta[];
   chains: ChainMeta[];
 } {
+  const settings = loadSettings();
+
   const agents: AgentMeta[] = [];
   const chains: ChainMeta[] = [];
 
@@ -183,7 +215,13 @@ function discoverAll(cwd: string): {
     if (fs.existsSync(candidate)) {
       for (const fp of listMarkdownFilesRecursive(candidate, (n) => n.endsWith(".md") && !n.endsWith(".chain.md"))) {
         const agent = readAgentFile(fp, "builtin");
-        if (agent) agents.push(agent);
+        if (agent) {
+          // Resolve model from settings: overrides → defaults
+          if (!agent.model) {
+            agent.model = resolveBuiltinModel(agent.name, settings);
+          }
+          agents.push(agent);
+        }
       }
       break;
     }

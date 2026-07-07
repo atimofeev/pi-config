@@ -1,7 +1,7 @@
 {
   "defaultModel": "deepseek-v4-pro",
   "defaultProvider": "opencode-go",
-  "defaultThinkingLevel": "xhigh",
+  "defaultThinkingLevel": "high",
   "enabledModels": [
     "opencode-go/deepseek-v4-pro",
     "opencode-go/deepseek-v4-flash",
@@ -35,30 +35,10 @@
   "theme": "catppuccin-mocha",
   "treeFilterMode": "default",
   "subagents": {
+    "defaultModel": "deepseek-v4-pro",
     "agentOverrides": {
       "scout": {
         "model": "deepseek-v4-flash"
-      },
-      "planner": {
-        "model": "deepseek-v4-pro"
-      },
-      "worker": {
-        "model": "deepseek-v4-pro"
-      },
-      "reviewer": {
-        "model": "deepseek-v4-pro"
-      },
-      "context-builder": {
-        "model": "deepseek-v4-pro"
-      },
-      "researcher": {
-        "model": "deepseek-v4-pro"
-      },
-      "delegate": {
-        "model": "deepseek-v4-pro"
-      },
-      "oracle": {
-        "model": "deepseek-v4-pro"
       }
     }
   },

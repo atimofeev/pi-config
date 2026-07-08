@@ -28,6 +28,19 @@
       ],
       "command": "docker",
       "directTools": true
+    },
+    "aws-docs": {
+      "args": [
+        "run",
+        "--interactive",
+        "--rm",
+        "--env",
+        "AWS_DOCUMENTATION_PARTITION=aws",
+        "mcp/aws-documentation:latest"
+      ],
+      "command": "docker",
+      "type": "stdio",
+      "directTools": true
     }
   }
 }

@@ -47,5 +47,19 @@ Match every task to the most appropriate subagent by its description/purpose.
 Rules:
 - Do NOT perform tasks yourself that a subagent is designed for. Always delegate.
 - Only handle: clarifying questions, user conversation, orchestration decisions.
-- When in doubt, delegate. If subagent fails, then parent handles it.
+- When in doubt, delegate.
+- Subagent timeout/tool error/task error = orchestration failure, NOT task failure.
+  Do NOT take over task in parent. Inspect status/transcript/artifacts, then resume/retry
+  same subagent with larger timeout or async mode.
+- On failed subagent run:
+  1. `subagent({ action: "status", id, view: "transcript" })`
+  2. read output artifact if needed
+  3. `subagent({ action: "resume", id, index: 0, message: "Continue from previous state. Finish original task. Keep output concise." })`
+  4. only after provider/quota/auth/unavailable-model failure, report blocker or switch model
+- For work likely >60s, launch subagents async + wait:
+  `async: true`, omit `timeoutMs` or set ≥900000; `wait` timeout leaves child running.
+  For foreground runs, set `timeoutMs` high: 900000–1800000 for infra/cloud work.
+- Parent may abandon subagent workflow ONLY when:
+  subagent model/provider is unusable (quota/usage limit, auth failure, provider outage, unavailable model),
+  or no suitable subagent exists.
 - Use `context: "fork"` for worker/oracle to share parent context cheaply.

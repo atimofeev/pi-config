@@ -25,3 +25,6 @@ pi-agent/projects-memory/
 pi-agent/mcp-cache.json
 pi-agent/mcp-npx-cache.json
 pi-agent/mcp-onboarding.json
+
+# Subagent runtime state
+pi-agent/pi-subagents-state/

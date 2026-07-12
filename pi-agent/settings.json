@@ -29,6 +29,7 @@
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
     "npm:@juicesharp/rpiv-btw",
+    "npm:@narumitw/pi-caffeinate"
   ],
   "theme": "catppuccin-mocha",
   "treeFilterMode": "default",

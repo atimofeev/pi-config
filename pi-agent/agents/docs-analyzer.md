@@ -4,7 +4,7 @@ description: |
   Fetches and analyzes documentation. Uses available doc tools (Context7, MCP docs)
   then falls back to web search. Returns analyzed, synthesized documentation with
   code examples.
-model: deepseek-v4-flash
+model: opencode-go/deepseek-v4-flash
 tools: resolve-library-id, query-docs, web_search, web_fetch, mcp
 thinking: low
 systemPromptMode: replace

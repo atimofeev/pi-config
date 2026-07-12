@@ -2,7 +2,7 @@
 name: youtube-summarizer
 description: |
 tools: bash
-model: deepseek-v4-flash
+model: opencode-go/deepseek-v4-flash
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false

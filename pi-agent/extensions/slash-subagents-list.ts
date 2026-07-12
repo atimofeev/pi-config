@@ -95,17 +95,13 @@ function resolveBuiltinModel(agentName: string, settings: Record<string, unknown
   // Check agent-specific override
   const overrides = subagents.agentOverrides as Record<string, Record<string, string>> | undefined;
   if (overrides?.[agentName]?.model) {
-    const model = overrides[agentName]!.model!;
-    const provider = (settings.defaultProvider as string) || "opencode-go";
-    return model.includes("/") ? model : `${provider}/${model}`;
+    return overrides[agentName]!.model!;
   }
 
   // Use subagents defaultModel or top-level defaultModel
   const defaultModel = (subagents.defaultModel as string) || (settings.defaultModel as string);
   if (!defaultModel) return undefined;
-
-  const provider = (settings.defaultProvider as string) || "opencode-go";
-  return defaultModel.includes("/") ? defaultModel : `${provider}/${defaultModel}`;
+  return defaultModel;
 }
 
 function findNearestProjectRoot(cwd: string): string | null {

@@ -1,6 +1,6 @@
 {
-  "defaultModel": "gpt-5.5",
-  "defaultProvider": "openai-codex",
+  "defaultModel": "deepseek-v4-pro",
+  "defaultProvider": "opencode-go",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "opencode-go/deepseek-v4-pro",

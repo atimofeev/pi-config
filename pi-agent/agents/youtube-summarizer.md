@@ -1,6 +1,6 @@
 ---
 name: youtube-summarizer
-description: |
+description: Summarizes YouTube videos from URLs. Use whenever user provides a YouTube link or asks to summarize, explain, extract key points from, or identify takeaways for a YouTube video. Runs local yt-summarize script and returns concise title, summary, and key points without web browsing or paid APIs.
 tools: bash
 model: opencode-go/deepseek-v4-flash
 systemPromptMode: replace

@@ -13,8 +13,8 @@
     "amazon-bedrock/global.anthropic.claude-sonnet-4-6",
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
-  "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.80.3",
+  "hideThinkingBlock": false,
+  "lastChangelogVersion": "0.80.7",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",

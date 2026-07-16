@@ -32,6 +32,12 @@
     "npm:@narumitw/pi-caffeinate"
   ],
   "theme": "catppuccin-mocha",
+  "themeOverrides": {
+    "toolSuccessBg": "#181825",
+    "toolErrorBg": "#11111b",
+    "toolDiffAdded": "teal",
+    "toolDiffRemoved": "maroon"
+  },
   "treeFilterMode": "default",
   "subagents": {
     "defaultModel": "opencode-go/deepseek-v4-pro",

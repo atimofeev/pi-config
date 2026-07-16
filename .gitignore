@@ -16,7 +16,7 @@ pi-agent/pi-hermes-memory/sessions.db-wal
 pi-agent/pi-hermes-memory/failures.md
 pi-agent/pi-hermes-memory/MEMORY.md
 pi-agent/pi-hermes-memory/USER.md
-pi-agent/pi-hermes-memory/.skills-migrated-*
+pi-agent/pi-hermes-memory/.*
 
 # Per-project memory (may contain sensitive context)
 pi-agent/projects-memory/

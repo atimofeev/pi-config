@@ -1,6 +1,6 @@
 # AGENTS.md — pi-config
 
-Pi coding agent configuration repository. Defines subagents, extensions, MCP servers, skills, memory stores, and runtime settings. `~/.pi/agent` symlinks to `pi-agent/` — edits take effect immediately.
+Pi coding agent configuration repository. Defines subagents, extensions, MCP servers, skills, memory stores, and runtime settings. `~/.pi/agent` symlinks to `pi-agent/`; `~/.agents/skills` symlinks to `skills/` — edits take effect immediately.
 
 ## Repository structure
 
@@ -8,8 +8,9 @@ Pi coding agent configuration repository. Defines subagents, extensions, MCP ser
 pi-config/
 ├── AGENTS.md                  # This file — agent instructions for the repo
 ├── README.md                  # Human overview and bootstrap guide
-├── install.sh                 # Bootstrap: creates ~/.pi/agent symlink
+├── justfile                   # Bootstrap/link tasks
 ├── .gitignore                 # Excludes auth, sessions, memory DBs, caches
+├── skills/                    # Shared procedural skills (committed)
 └── pi-agent/                  # Symlink target: ~/.pi/agent → here
     ├── agents/                # Subagent definitions (markdown + YAML frontmatter)
     ├── extensions/            # TypeScript TUI extensions (/git-tag, /agents, codex bars)
@@ -17,6 +18,7 @@ pi-config/
     ├── pi-hermes-memory/      # Persistent memory (USER, MEMORY, failures, skills)
     ├── projects-memory/       # Per-project memory files
     ├── npm/                   # Node dependencies (gitignored — installed by pi-agent)
+    ├── SYSTEM.md              # Response style, environment, delegation policy
     ├── settings.json          # Model, provider, theme, packages, subagent overrides
     ├── models.json            # Custom model definitions (ollama local models)
     ├── mcp.json               # MCP server connections (kubernetes, nixos, terraform)
@@ -29,9 +31,9 @@ pi-config/
 
 ### Symlink deployment
 
-`install.sh` creates exactly one symlink: `~/.pi/agent → pi-agent/`. No file copies, no npm install, no systemd. The pi-coding-agent runtime reads from `~/.pi/agent/`. Editing files here (via symlink) changes runtime behavior immediately.
+`just install` creates two symlinks: `~/.pi/agent → pi-agent/` and `~/.agents/skills → skills/`. No file copies, no npm install, no systemd. The pi-coding-agent runtime reads from `~/.pi/agent/`. Editing files here (via symlink) changes runtime behavior immediately.
 
-Existing `~/.pi/agent` is backed up to `~/.pi/agent.backup.<timestamp>/` before linking.
+Existing targets are backed up to `<target>.backup.<timestamp>` before linking.
 
 ### What's NOT tracked
 
@@ -273,10 +275,10 @@ On a new machine:
 ```bash
 git clone <repo-url> ~/repos/pi-config
 cd ~/repos/pi-config
-./install.sh
+just install
 ```
 
-`install.sh` is idempotent — exits cleanly if symlink already correct.
+`just install` is idempotent — skips symlinks already pointing at correct targets.
 
 ## Daily workflow
 

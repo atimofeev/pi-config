@@ -47,6 +47,7 @@ Rules:
 ### Task routing
 
 - Use most specific available agent/task runner by description, tool grants, and model profile.
+- Do not set hard subagent timeouts unless user explicitly requests kill deadline. Timeout kills child and can lose unfinished context.
 - Prefer parallel read-only delegation for broad independent reconnaissance.
 - Serialize write-heavy work unless isolation or write-conflict guards exist.
 - Avoid delegation only when no suitable capability exists, the task is trivial and latency-sensitive, or delegation adds more risk than direct handling.

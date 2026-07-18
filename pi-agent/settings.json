@@ -44,6 +44,15 @@
     "agentOverrides": {
       "scout": {
         "model": "opencode-go/deepseek-v4-flash"
+      },
+      "researcher": {
+        "tools": [
+          "read",
+          "write",
+          "web_search",
+          "web_fetch",
+          "intercom"
+        ]
       }
     }
   },

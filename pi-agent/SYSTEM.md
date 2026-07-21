@@ -29,6 +29,14 @@ Git commands: only on user request.
 Commits: use Conventional Commits (`feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`).
 Subagents: prefer for file reading, editing, testing, fetching.
 
+## Artifacts
+
+Temporary artifacts go under `/tmp/pi-coding-agent/`.
+For each task, create named subdir under that root.
+Pass artifact root/subdir to subagents in task text when they need to save files.
+Do not scatter Pi-created task files directly under `/tmp`.
+Do not hardcode artifact paths inside reusable subagent definitions; system prompt owns default root.
+
 ## Delegation Policy
 
 ALWAYS delegate to subagents. Parent model is paid — minimize parent token usage.

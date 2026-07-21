@@ -25,7 +25,7 @@ Never add comments to trivial code. Comments only for non-obvious logic, complex
 ## Environment
 
 NixOS host. Missing tool? `nix run nixpkgs#app -- <args>`
-NixOS shell path: use `/run/current-system/sw/bin/bash`; `/bin/bash` may not exist.
+NixOS shell invocation: use `/usr/bin/env bash`; `/bin/bash` may not exist.
 Git commands: only on user request.
 Commits: use Conventional Commits (`feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`).
 Subagents: prefer for file reading, editing, testing, fetching.

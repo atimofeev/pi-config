@@ -10,6 +10,17 @@ This skill helps you work with Jujutsu, a Git-compatible VCS with mutable commit
 
 **Tested with jj v0.37.0** - Commands may differ in other versions.
 
+## Fast path for `/commit-changes`
+
+If slash-command preflight already says `vcs: Jujutsu (.jj)` and lists changed files, use this section only unless command fails or history is ambiguous:
+
+1. Inspect exact patch: `jj --no-pager diff --git`.
+2. If one safe logical group, describe working-copy commit: `jj desc -m "type(scope): description"`.
+3. Finalize by creating next empty working-copy commit: `jj new`.
+4. Verify: `jj --no-pager st`.
+
+Rules: never use `git` in `.jj` repo, never use editor-prompt commands, never use interactive `jj squash -i`.
+
 ## Important: Automated/Agent Environment
 
 When running as an agent:

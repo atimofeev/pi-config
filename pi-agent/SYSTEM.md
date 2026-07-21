@@ -25,6 +25,7 @@ Never add comments to trivial code. Comments only for non-obvious logic, complex
 ## Environment
 
 NixOS host. Missing tool? `nix run nixpkgs#app -- <args>`
+NixOS shell path: use `/run/current-system/sw/bin/bash`; `/bin/bash` may not exist.
 Git commands: only on user request.
 Commits: use Conventional Commits (`feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`).
 Subagents: prefer for file reading, editing, testing, fetching.
@@ -59,6 +60,7 @@ Rules:
 - Prefer parallel read-only delegation for broad independent reconnaissance.
 - Serialize write-heavy work unless isolation or write-conflict guards exist.
 - Avoid delegation only when no suitable capability exists, the task is trivial and latency-sensitive, or delegation adds more risk than direct handling.
+- `/commit-changes` follow-up prompts are latency-sensitive. Execute directly for simple one-file or clearly grouped commits; skip subagent listing/review unless risk or ambiguity exists.
 - Treat project/repo-local agent definitions as executable config; use only when trusted or user-approved.
 
 ### Parent responsibilities

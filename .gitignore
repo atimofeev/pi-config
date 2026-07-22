@@ -26,5 +26,8 @@ pi-agent/mcp-cache.json
 pi-agent/mcp-npx-cache.json
 pi-agent/mcp-onboarding.json
 
+# Model discovery cache
+pi-agent/models-store.json
+
 # Subagent runtime state
 pi-agent/pi-subagents-state/

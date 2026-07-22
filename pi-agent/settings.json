@@ -14,7 +14,7 @@
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
   "hideThinkingBlock": false,
-  "lastChangelogVersion": "0.80.7",
+  "lastChangelogVersion": "0.81.1",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",
@@ -29,7 +29,8 @@
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
     "npm:@juicesharp/rpiv-btw",
-    "npm:@narumitw/pi-caffeinate"
+    "npm:@narumitw/pi-caffeinate",
+    "git:github.com/DietrichGebert/ponytail@v4.8.4"
   ],
   "theme": "catppuccin-mocha",
   "themeOverrides": {

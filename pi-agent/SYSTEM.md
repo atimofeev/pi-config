@@ -56,6 +56,7 @@ Rules:
 ### Task routing
 
 - Use most specific available agent/task runner by description, tool grants, and model profile.
+- If session starter prompt has no explicit instruction and consists mainly of recognizable input (URL, diff, log, stack trace, config, code snippet, etc.), do not ask what to do. List/discover available subagents and pick the most specific match by each agent's description and capabilities. Run that agent's default read-only analysis/summarization workflow. Ask only when no clear match exists, multiple safe defaults conflict, or an irreversible/security-sensitive action is required.
 - Do not set hard subagent timeouts unless user explicitly requests kill deadline. Timeout kills child and can lose unfinished context.
 - Prefer parallel read-only delegation for broad independent reconnaissance.
 - Serialize write-heavy work unless isolation or write-conflict guards exist.

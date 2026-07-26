@@ -6,71 +6,145 @@
 #   1 - no transcript available (title may be extracted)
 #   2 - rate limited / IP blocked (title may be extracted)
 #   3 - extraction error
-# Usage: yt-summarize <youtube-url>
+# Usage: yt-summarize [--save DIR] <youtube-url>
 
 set -euo pipefail
 shopt -s nullglob
 
-[[ $# -ge 1 ]] || { echo "USAGE: yt-summarize <youtube-url>" >&2; exit 3; }
+save_dir=""
+if [[ "${1:-}" == "--save" ]]; then
+    [[ $# -ge 3 ]] || { echo "USAGE: yt-summarize [--save DIR] <youtube-url>" >&2; exit 3; }
+    save_dir="$2"
+    shift 2
+fi
+
+[[ $# -ge 1 ]] || { echo "USAGE: yt-summarize [--save DIR] <youtube-url>" >&2; exit 3; }
 
 url="$1"
+
+# --- Extract video ID for caching ---
+extract_video_id() {
+    local u="$1"
+    [[ "$u" =~ youtube\.com/watch\?.*v=([A-Za-z0-9_-]{11}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+    [[ "$u" =~ youtu\.be/([A-Za-z0-9_-]{11}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+    [[ "$u" =~ youtube\.com/shorts/([A-Za-z0-9_-]{11}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+    [[ "$u" =~ youtube\.com/embed/([A-Za-z0-9_-]{11}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+    if command -v sha256sum &>/dev/null; then
+        echo "$u" | sha256sum | cut -d' ' -f1
+    else
+        echo "$u" | tr -c '[:alnum:]' '_' | head -c 64
+    fi
+}
+
+video_id="$(extract_video_id "$url")"
+
+# --- Cache ---
+cache_dir="${YT_SUMMARIZE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/yt-summarize}"
+cache_file="$cache_dir/${video_id}.txt"
+
+if [[ -f "$cache_file" ]]; then
+    cat "$cache_file"
+    if [[ -n "$save_dir" ]]; then
+        mkdir -p "$save_dir"
+        cp "$cache_file" "$save_dir/${video_id}.txt"
+    fi
+    exit 0
+fi
+
 tmp="$(mktemp -d)"
 cleanup() { rm -rf "$tmp"; }
 trap cleanup EXIT
 
 # --- yt-dlp invocation ---
-# Prefer PATH yt-dlp, fall back to nix shell (includes nodejs for JS challenges)
 if command -v yt-dlp &>/dev/null; then
-    YT_DLP=(yt-dlp)
+    YT_DLP_BASE=(yt-dlp)
 elif command -v nix &>/dev/null; then
-    # nodejs enables deno/node JS runtime for solving YouTube challenges
-    YT_DLP=(nix shell nixpkgs#yt-dlp nixpkgs#nodejs -c yt-dlp)
+    YT_DLP_BASE=(nix shell nixpkgs#yt-dlp nixpkgs#nodejs -c yt-dlp)
 else
     echo "ERROR: yt-dlp not found and nix not available. Install yt-dlp or nix." >&2
     exit 3
 fi
 
-# --- Helper: detect IP block / bot detection ---
+run_ytdlp() {
+    if command -v timeout &>/dev/null; then
+        timeout 90 "${YT_DLP_BASE[@]}" "$@" --socket-timeout 30
+    else
+        "${YT_DLP_BASE[@]}" "$@" --socket-timeout 30
+    fi
+}
+
+# --- Helpers ---
 is_bot_blocked() {
     grep -qi "sign in to confirm\|LOGIN_REQUIRED\|bot\|not a bot" "$tmp/err" 2>/dev/null
 }
 
-# --- Step 1: Get title ---
-# Try yt-dlp first, fall back to curl-based HTML extraction
-"${YT_DLP[@]}" --print "%(title)s" "$url" > "$tmp/title.txt" 2> "$tmp/title_err" || true
-title="$(head -n 1 "$tmp/title.txt" 2>/dev/null || true)"
+is_rate_limited() {
+    grep -qi "429\|too many requests\|rate limit" "$tmp/err" 2>/dev/null
+}
 
-if [[ -z "$title" ]] || [[ "$title" == "NA" ]] || is_bot_blocked; then
-    # Fallback: parse title from YouTube watch page HTML
-    curl -sS --max-time 15 \
-        -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" \
-        -H "Accept-Language: en-US,en;q=0.9" \
-        "$url" 2>/dev/null | grep -oP '(?<="title":\{"runs":\[\{"text":")([^"]+)' | head -1 > "$tmp/curl_title.txt" 2>/dev/null || true
-    curl_title="$(head -n 1 "$tmp/curl_title.txt" 2>/dev/null || true)"
-    if [[ -n "$curl_title" ]]; then
-        title="$curl_title"
-    elif [[ -z "$title" ]] || [[ "$title" == "NA" ]]; then
-        title="Unknown Title"
+# --- Step 1: Get title ---
+# Prefer yt-dlp -J for metadata (single call, JSON saved for possible reuse)
+run_ytdlp -J --skip-download "$url" > "$tmp/info.json" 2> "$tmp/info_err" || true
+
+title=""
+if [[ -s "$tmp/info.json" ]]; then
+    if command -v python3 &>/dev/null; then
+        title="$(python3 -c "import json; d=json.load(open('$tmp/info.json')); print(d.get('title',''))" 2>/dev/null || true)"
+    else
+        title="$(grep -oP '"title"\s*:\s*"\K[^"]+' "$tmp/info.json" | head -1 2>/dev/null || true)"
     fi
 fi
 
+# Fallback: --print title
+if [[ -z "$title" ]] || [[ "$title" == "NA" ]]; then
+    run_ytdlp --print "%(title)s" "$url" > "$tmp/title.txt" 2> "$tmp/title_err" || true
+    title="$(head -n 1 "$tmp/title.txt" 2>/dev/null || true)"
+fi
+
+# Fallback: oEmbed
+if [[ -z "$title" ]] || [[ "$title" == "NA" ]]; then
+    curl -sS --max-time 15 \
+        -G "https://www.youtube.com/oembed" \
+        --data-urlencode "url=$url" \
+        --data-urlencode "format=json" \
+        > "$tmp/oembed.json" 2>/dev/null || true
+    if [[ -s "$tmp/oembed.json" ]]; then
+        if command -v python3 &>/dev/null; then
+            title="$(python3 -c "import json; d=json.load(open('$tmp/oembed.json')); print(d.get('title',''))" 2>/dev/null || true)"
+        else
+            title="$(grep -oP '"title"\s*:\s*"\K[^"]+' "$tmp/oembed.json" | head -1 2>/dev/null || true)"
+        fi
+    fi
+fi
+
+if [[ -z "$title" ]] || [[ "$title" == "NA" ]]; then
+    title="Unknown Title"
+fi
+
 # --- Step 2: Download subtitles ---
-# CRITICAL: use both --write-subs (manual/regular captions) and --write-auto-subs (auto-generated)
-# Previously only --write-auto-subs was used, missing all manually uploaded captions
-try_download() {
-    local lang="$1"
-    "${YT_DLP[@]}" \
-        --skip-download \
-        --write-subs \
-        --write-auto-subs \
-        --sub-langs "$lang" \
-        --sub-format "vtt" \
-        --ignore-errors \
-        -o "$tmp/%(id)s.%(ext)s" \
-        "$url" > /dev/null 2> "$tmp/err" || true
-}
+langs="${YT_SUMMARIZE_LANGS:-en,en-US,en-GB,ru,fr,de,es,pt,it,ja,ko,zh}"
+
+run_ytdlp \
+    --skip-download \
+    --write-subs \
+    --write-auto-subs \
+    --sub-langs "$langs" \
+    --sub-format "vtt" \
+    --ignore-errors \
+    -o "$tmp/%(id)s.%(ext)s" \
+    "$url" > /dev/null 2> "$tmp/err" || true
 
 find_sub() {
+    IFS=',' read -r -a lang_list <<< "$langs"
+    for lang in "${lang_list[@]}"; do
+        for f in "$tmp"/*."$lang".vtt "$tmp"/*."$lang".srt; do
+            [[ -f "$f" ]] || continue
+            [[ "$f" == *.live_chat.* ]] && continue
+            echo "$f"
+            return 0
+        done
+    done
+
     for f in "$tmp"/*.vtt "$tmp"/*.srt; do
         [[ -f "$f" ]] || continue
         [[ "$f" == *.live_chat.* ]] && continue
@@ -80,45 +154,29 @@ find_sub() {
     return 1
 }
 
-rate_limited=0
-bot_blocked=0
-# Try English first, then Russian, then broad set of languages
-for lang in "en" "ru" "en,en-US,en-GB,ru,fr,de,es,pt,it,ja,ko,zh"; do
-    try_download "$lang"
-    if sub=$(find_sub); then
-        break
-    fi
-    if grep -qi "429\|too many requests\|rate limit" "$tmp/err" 2>/dev/null; then
-        rate_limited=1
-        continue
-    fi
-    if is_bot_blocked; then
-        bot_blocked=1
-        continue
-    fi
-done
-
-# --- Output title (always) ---
-echo "TITLE:"
-echo "$title"
-echo "---TRANSCRIPT---"
+# --- Assemble output: title + transcript header ---
+{
+    echo "TITLE:"
+    echo "$title"
+    echo "---TRANSCRIPT---"
+} > "$tmp/output.txt"
 
 # --- Handle missing transcript ---
 if ! sub=$(find_sub); then
-    if [[ "$bot_blocked" -eq 1 ]]; then
+    cat "$tmp/output.txt"
+    if is_bot_blocked; then
         echo "ERROR: YouTube bot detection blocked request (IP likely datacenter/VPS). Use proxy or VPN." >&2
         exit 2
     fi
-    if [[ "$rate_limited" -eq 1 ]]; then
+    if is_rate_limited; then
         echo "ERROR: YouTube rate limited on all languages. Wait and retry." >&2
         exit 2
     fi
-    echo "ERROR: No transcript available (tried regular + auto-generated captions in 11 languages)" >&2
+    echo "ERROR: No transcript available (tried regular + auto-generated captions in multiple languages)" >&2
     exit 1
 fi
 
 # --- Step 3: Clean transcript ---
-# Remove VTT/SRT formatting: headers, timestamps, HTML tags, empty lines, duplicates
 sed -E \
     -e '/^WEBVTT/d' \
     -e '/^Kind:/Id' \
@@ -136,11 +194,20 @@ sed -E \
 line_count="$(wc -l < "$tmp/clean.txt")"
 
 if [[ "$line_count" -le 600 ]]; then
-    cat "$tmp/clean.txt"
+    cat "$tmp/clean.txt" >> "$tmp/output.txt"
 else
-    head -n 250 "$tmp/clean.txt"
-    echo ""
-    echo "[... $(( line_count - 500 )) lines omitted from middle ...]"
-    echo ""
-    tail -n 250 "$tmp/clean.txt"
+    head -n 250 "$tmp/clean.txt" >> "$tmp/output.txt"
+    echo "" >> "$tmp/output.txt"
+    echo "[... $(( line_count - 500 )) lines omitted from middle ...]" >> "$tmp/output.txt"
+    echo "" >> "$tmp/output.txt"
+    tail -n 250 "$tmp/clean.txt" >> "$tmp/output.txt"
+fi
+
+# --- Cache and output ---
+mkdir -p "$cache_dir"
+cp "$tmp/output.txt" "$cache_file"
+cat "$tmp/output.txt"
+if [[ -n "$save_dir" ]]; then
+    mkdir -p "$save_dir"
+    cp "$tmp/output.txt" "$save_dir/${video_id}.txt"
 fi

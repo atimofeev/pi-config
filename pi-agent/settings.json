@@ -9,8 +9,8 @@
     "openai-codex/gpt-5.5",
     "openrouter/openrouter/free",
     "amazon-bedrock/global.anthropic.claude-fable-5",
-    "amazon-bedrock/global.anthropic.claude-opus-4-8",
-    "amazon-bedrock/global.anthropic.claude-sonnet-4-6",
+    "amazon-bedrock/global.anthropic.claude-opus-5",
+    "amazon-bedrock/global.anthropic.claude-sonnet-5",
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
   "hideThinkingBlock": false,
@@ -22,15 +22,15 @@
     "npm:pi-subagents",
     "npm:pi-go-bars",
     "npm:pi-caveman",
-    "npm:@howaboua/pi-codex-conversion@1.5.21",
+    "npm:@howaboua/pi-codex-conversion",
     "npm:pi-hermes-memory",
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
     "npm:@juicesharp/rpiv-btw",
-    "npm:@narumitw/pi-caffeinate",
-    "git:github.com/DietrichGebert/ponytail@v4.8.4"
+    "git:github.com/DietrichGebert/ponytail@v4.8.4",
+    "../../repos/pi-extensions/extensions/pi-caffeinate"
   ],
   "theme": "catppuccin-mocha",
   "themeOverrides": {
@@ -47,13 +47,7 @@
         "model": "opencode-go/deepseek-v4-flash"
       },
       "researcher": {
-        "tools": [
-          "read",
-          "write",
-          "web_search",
-          "web_fetch",
-          "intercom"
-        ]
+        "tools": ["read", "write", "web_search", "web_fetch", "intercom"]
       }
     }
   },

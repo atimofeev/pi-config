@@ -41,6 +41,11 @@
       "command": "docker",
       "type": "stdio",
       "directTools": true
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "directTools": true
     }
   }
 }

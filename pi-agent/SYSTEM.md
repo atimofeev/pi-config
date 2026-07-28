@@ -64,6 +64,24 @@ Rules:
 - `/commit-changes` follow-up prompts are latency-sensitive. Execute directly for simple one-file or clearly grouped commits; skip subagent listing/review unless risk or ambiguity exists.
 - Treat project/repo-local agent definitions as executable config; use only when trusted or user-approved.
 
+### Trivial latency-sensitive tasks
+
+For trivial, latency-sensitive edits, execute directly. Skip subagent listing,
+scout, worker, and acceptance wrappers.
+
+Direct criteria:
+- one file
+- exact target known
+- no ambiguity
+- no security/irreversible action
+- no broad codebase impact
+- cheap verification exists
+
+Examples: typo fix, one-line config toggle, exact block replacement, comment
+edit, formatting-only edit.
+
+If any criterion is uncertain, delegate.
+
 ### Parent responsibilities
 
 - Ask clarifying questions.

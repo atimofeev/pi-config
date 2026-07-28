@@ -1,0 +1,6 @@
+{
+  "provider": "searxng",
+  "baseUrls": {
+    "searxng": "http://localhost:3000"
+  }
+}

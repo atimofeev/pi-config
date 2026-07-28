@@ -17,7 +17,7 @@ If slash-command preflight already says `vcs: Jujutsu (.jj)` and lists changed f
 1. Inspect exact patch: `jj --no-pager diff --git`.
 2. If one safe logical group, describe working-copy commit: `jj desc -m "type(scope): description"`.
 3. Finalize by creating next empty working-copy commit: `jj new`.
-4. Verify: `jj --no-pager st`.
+4. Verify and output evidence: `jj --no-pager st` then output line `COMMITTED: <change-id> | <type(scope): description> | status: ok`. Get change-id from `jj --no-pager log -r @- --no-graph -T 'change_id'`.
 
 Rules: never use `git` in `.jj` repo, never use editor-prompt commands, never use interactive `jj squash -i`.
 

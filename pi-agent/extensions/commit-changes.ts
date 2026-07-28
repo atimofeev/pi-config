@@ -147,7 +147,7 @@ function buildPrompt(extraContext: string, preflight: Preflight): string {
   const base = [
     "Commit current changes granularly using Conventional Commits.",
     "",
-    "Latency-sensitive slash command: execute directly. Do not delegate unless changes are broad, risky, or ambiguous.",
+    "Use direct shell/exec_command calls for latency. If any exec_command fails with EPIPE, do not retry directly — immediately delegate all remaining shell operations to a single worker subagent. When delegating, include the COMMITTED evidence output requirement in the worker task.",
     "Slash-command preflight already detected VCS and changed files. Do not repeat VCS detection unless changed files conflict.",
     "",
     "Preflight:",
@@ -162,7 +162,7 @@ function buildPrompt(extraContext: string, preflight: Preflight): string {
     "- Do not commit secrets, local env files, logs, build outputs, caches, or generated artifacts unless explicitly requested.",
     "- Do NOT push — only commit locally.",
     "- If changes are ambiguous or unsafe, ask before committing.",
-    "- After committing, summarize what was committed.",
+    "- After committing, output commit evidence on a single line. Format: 'COMMITTED: <hash-or-change-id> | <type(scope): description> | status: ok'. This line MUST be in your final output. Run verification command after commit (git log -1 --format='%H %s' or jj --no-pager log -r @ --no-graph -T 'commit_id ++ \" | \" ++ description') to get the actual committed ID and message. If delegating commit execution to a worker subagent, include this exact output requirement in the worker's task description.",
   ];
 
   if (extraContext.trim()) {

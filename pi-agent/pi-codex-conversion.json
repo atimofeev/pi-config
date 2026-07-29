@@ -5,6 +5,7 @@
     "additionalProviders": []
   },
   "tools": {
+    "customRustBinariesDir": "/home/atimofeev/.pi/codex-helpers/bin",
     "webRun": true,
     "imageGeneration": true,
     "applyPatchOnly": false

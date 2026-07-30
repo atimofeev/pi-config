@@ -1,11 +1,11 @@
 /**
- * pi-codex-bars — Codex usage widget for pi
+ * pi-codex-bars — Codex usage footer for pi
  *
- * Shows session & daily OpenAI Codex usage limits as a centred widget
- * between the editor and footer. Coexists with pi-go-bars.
+ * Renders 5h OpenAI Codex usage inline in a custom 2-line footer
+ * matching pi-go-bars layout. Replaces the old below-editor widget.
  *
  * Usage:
- *   Widget auto-shows when active provider is openai-codex
+ *   Footer auto-shows when active provider is openai-codex
  *   /codex — detail overlay with full-width bars
  */
 
@@ -13,6 +13,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import {
   Container,
   Text,
+  truncateToWidth,
   visibleWidth,
   type Component,
   type Focusable,
@@ -31,8 +32,7 @@ interface CodexUsageWindow {
 }
 
 interface CodexUsageData {
-  session: CodexUsageWindow | null;
-  daily: CodexUsageWindow | null;
+  usage: CodexUsageWindow | null;
   error?: string;
   stale?: boolean;
   warning?: string;
@@ -98,25 +98,17 @@ async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
       signal: controller.signal,
     });
     if (!resp.ok) {
-      return { session: null, daily: null, error: `HTTP ${resp.status}`, fetchedAt: Date.now() };
+      throw new Error(`HTTP ${resp.status}`);
     }
     const data = await resp.json() as any;
-    const primary = data?.rate_limit?.primary_window;
-    const secondary = data?.rate_limit?.secondary_window;
+    const window = data?.rate_limit?.primary_window;
     return {
-      session: {
-        usagePercent: typeof primary?.used_percent === "number" ? primary.used_percent : 0,
-        resetInSec: typeof primary?.reset_after_seconds === "number" ? primary.reset_after_seconds : 0,
-      },
-      daily: {
-        usagePercent: typeof secondary?.used_percent === "number" ? secondary.used_percent : 0,
-        resetInSec: typeof secondary?.reset_after_seconds === "number" ? secondary.reset_after_seconds : 0,
+      usage: {
+        usagePercent: typeof window?.used_percent === "number" ? window.used_percent : 0,
+        resetInSec: typeof window?.reset_after_seconds === "number" ? window.reset_after_seconds : 0,
       },
       fetchedAt: Date.now(),
     };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { session: null, daily: null, error: msg, fetchedAt: Date.now() };
   } finally {
     clearTimeout(timer);
   }
@@ -124,7 +116,7 @@ async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
 
 async function fetchWithCache(): Promise<CodexUsageData> {
   const token = readCodexToken();
-  if (!token) return { session: null, daily: null, error: "no Codex auth (run /login)" };
+  if (!token) return { usage: null, error: "no Codex auth (run /login)" };
   const cached = readCache();
   if (cached && Date.now() - (cached.fetchedAt ?? 0) < CACHE_TTL_MS) return cached;
   try {
@@ -135,7 +127,7 @@ async function fetchWithCache(): Promise<CodexUsageData> {
     const msg = err instanceof Error ? err.message : String(err);
     const stale = readCache();
     if (stale) return { ...stale, stale: true, warning: `stale (${msg})` };
-    return { session: null, daily: null, error: msg };
+    return { usage: null, error: msg };
   }
 }
 
@@ -165,6 +157,18 @@ function colorForPercent(value: number): "success" | "warning" | "error" {
   if (value >= 90) return "error";
   if (value >= 70) return "warning";
   return "success";
+}
+
+function formatTokens(count: number): string {
+  if (count < 1000) return count.toString();
+  if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+  if (count < 1000000) return `${Math.round(count / 1000)}k`;
+  if (count < 10000000) return `${(count / 1000000).toFixed(1)}M`;
+  return `${Math.round(count / 1000000)}M`;
+}
+
+function stripAnsi(s: string): string {
+  return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -205,7 +209,6 @@ function renderBarSegment(t: any, w: Win, barSlots: number): string {
   const before = Math.max(0, Math.min(filled, Math.floor((filled - lw) / 2)));
   const after = Math.max(0, filled - before - lw);
   const empty = Math.max(0, bw - before - lw - after);
-
   return (
     t.fg(barCol, "\u2588".repeat(before)) +
     barBg + t.bold(label) + "\x1b[39m\x1b[49m" +
@@ -214,96 +217,61 @@ function renderBarSegment(t: any, w: Win, barSlots: number): string {
   );
 }
 
-function renderWidgetLine(
+/** Compact Codex bar segment for footer. Returns "" if nothing fits. */
+function renderFooterCodexBar(
   t: any,
   data: CodexUsageData | null,
   loading: boolean,
-  width: number,
+  maxWidth: number,
 ): string {
-  if (loading) return center(t.fg("dim", "Codex loading..."), width);
-
-  if (!data || data.error) {
-    return center(t.fg("dim", "Codex " + (data?.error ?? "no data")), width);
+  if (loading) {
+    return visibleWidth(t.fg("dim", "Codex loading...")) <= maxWidth
+      ? t.fg("dim", "Codex loading...") : "";
   }
-
-  const elapsed = data.fetchedAt ? Math.floor((Date.now() - data.fetchedAt) / 1000) : 0;
-
-  const wins: Win[] = [];
-  if (data.session) {
-    wins.push({ label: "S", pct: data.session.usagePercent, resetSec: Math.max(0, data.session.resetInSec - elapsed) });
-  }
-  if (data.daily) {
-    wins.push({ label: "W", pct: data.daily.usagePercent, resetSec: Math.max(0, data.daily.resetInSec - elapsed) });
-  }
-  if (wins.length === 0) return "";
+  if (!data || data.error) return "";
+  if (!data.usage) return "";
 
   const staleSuffix = data.stale ? t.fg("warning", " stale") : "";
+  const elapsed = data.fetchedAt ? Math.floor((Date.now() - data.fetchedAt) / 1000) : 0;
+  const w: Win = { label: "5h", pct: data.usage.usagePercent, resetSec: Math.max(0, data.usage.resetInSec - elapsed) };
   const staleW = visibleWidth(staleSuffix);
 
-  const MIN_BAR = 4;
-  const MAX_BAR = 20;
-  let showResets = true;
+  // Determine minimum viable layout: try label+reset, then label only, then bare
+  let barSlots = 4;
+  let showLabel = false;
+  let showReset = false;
 
-  let fixed = visibleWidth("Codex");
-  for (const w of wins) {
-    fixed += 1 + w.label.length + 1;
-    if (showResets && w.resetSec > 0) fixed += 3 + visibleWidth(formatDuration(w.resetSec));
-  }
-  fixed += staleW;
+  const bareWidth = visibleWidth("Codex") + 1 + 4 + staleW; // "Codex" + " " + bar + stale
+  if (bareWidth > maxWidth) return "";
 
-  let barSlots = Math.min(MAX_BAR, Math.floor((width - fixed) / wins.length));
+  const withLabelReset = visibleWidth("Codex") + 1 + w.label.length + 1 + 4 +
+    (w.resetSec > 0 ? 3 + visibleWidth(formatDuration(w.resetSec)) : 0) + staleW;
+  const withLabel = visibleWidth("Codex") + 1 + w.label.length + 1 + 4 + staleW;
 
-  if (barSlots < 5) {
-    showResets = false;
-    fixed = visibleWidth("Codex");
-    for (const w of wins) fixed += 1 + w.label.length + 1;
-    fixed += staleW;
-    barSlots = Math.min(MAX_BAR, Math.floor((width - fixed) / wins.length));
-  }
+  if (withLabelReset <= maxWidth) { showLabel = true; showReset = true; }
+  else if (withLabel <= maxWidth) { showLabel = true; }
+  // else bare: no label, no reset — 4-char bar only
 
-  barSlots = Math.max(MIN_BAR, barSlots);
+  // Expand bar to fill remaining space
+  let used = visibleWidth("Codex");
+  used += showLabel ? 1 + w.label.length + 1 : 1;
+  used += barSlots;
+  if (showReset && w.resetSec > 0) used += 3 + visibleWidth(formatDuration(w.resetSec));
+  used += staleW;
+  const remaining = Math.max(0, maxWidth - used);
+  barSlots = Math.min(20, barSlots + remaining);
 
   const parts: string[] = [t.fg("dim", "Codex")];
-  for (const w of wins) {
-    parts.push(t.fg("muted", " " + w.label + " "));
-    parts.push(renderBarSegment(t, w, barSlots));
-    if (showResets && w.resetSec > 0) {
-      parts.push(t.fg("dim", " \u27F3 " + formatDuration(w.resetSec)));
-    }
-  }
-
-  return center(parts.join("") + staleSuffix, width);
-}
-
-function center(text: string, width: number): string {
-  const tw = visibleWidth(text);
-  if (tw >= width) return text;
-  return " ".repeat(Math.floor((width - tw) / 2)) + text;
+  if (showLabel) parts.push(t.fg("muted", " " + w.label + " "));
+  else parts.push(" ");
+  parts.push(renderBarSegment(t, w, barSlots));
+  if (showReset && w.resetSec > 0)
+    parts.push(t.fg("dim", " \u27F3 " + formatDuration(w.resetSec)));
+  return parts.join("") + staleSuffix;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Widget component
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class CodexWidget implements Component {
-  private state: { data: CodexUsageData | null; loading: boolean };
-  private theme: any;
-
-  constructor(state: { data: CodexUsageData | null; loading: boolean }, theme: any) {
-    this.state = state;
-    this.theme = theme;
-  }
-
-  invalidate() {}
-
-  render(width: number): string[] {
-    const line = renderWidgetLine(this.theme, this.state.data, this.state.loading, width);
-    return line ? [line] : [];
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Detail overlay
+// Detail overlay (/codex)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildDetailOverlay(
@@ -333,9 +301,8 @@ function buildDetailOverlay(
       lines.push("");
     }
 
-    const renderWin = (label: string, w: CodexUsageWindow | null) => {
-      if (!w) return;
-      const pct = clampPercent(w.usagePercent);
+    if (data.usage) {
+      const pct = clampPercent(data.usage.usagePercent);
       const color = colorForPercent(pct);
       const barW = 16;
       const filled = Math.round((pct / 100) * barW);
@@ -343,17 +310,14 @@ function buildDetailOverlay(
         t.fg(color, "\u2588".repeat(Math.max(0, filled))) +
         t.fg("dim", "\u2591".repeat(Math.max(0, barW - filled)));
       const reset =
-        w.resetInSec > 0
-          ? t.fg("dim", "  resets in " + formatDuration(w.resetInSec))
+        data.usage.resetInSec > 0
+          ? t.fg("dim", "  resets in " + formatDuration(data.usage.resetInSec))
           : "";
       lines.push(
-        t.fg("muted", label.padEnd(10)) + bar + " " + t.fg(color, `${pct}%`) + reset,
+        t.fg("muted", "5h".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`) + reset,
       );
       lines.push("");
-    };
-
-    renderWin("Session", data.session);
-    renderWin("Daily", data.daily);
+    }
   }
 
   lines.push(t.fg("dim", "Press any key to close"));
@@ -367,35 +331,25 @@ function buildDetailOverlay(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL_MS = 60_000;
-const WIDGET_KEY = "pi-codex-bars";
 
 function isCodexModel(model: { provider: string } | undefined | null): boolean {
   return model?.provider === "openai-codex";
+}
+
+function isGoModel(model: { provider: string } | undefined | null): boolean {
+  return model?.provider === "opencode-go";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Suppress "Codex adapter" status from @howaboua/pi-codex-conversion
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Known/predicted status keys that @howaboua/pi-codex-conversion
- * uses for its footer indicator. If the key changes in a future
- * update, add the new key here.
- */
 const CODX_ADAPTER_STATUS_KEYS = [
-  "codex-adapter",          // current (v1.5.3)
-  "pi-codex-adapter",       // plausible rename
-  "codex-conversion",        // plausible rename
+  "codex-adapter",
+  "pi-codex-adapter",
+  "codex-conversion",
 ];
 
-/**
- * Suppress the "Codex adapter" footer status set by
- * @howaboua/pi-codex-conversion.
- *
- * Simply clears all known keys. Failures are silently ignored
- * — if the key changes, suppression stops working gracefully
- * (status reappears) rather than crashing.
- */
 function suppressCodexAdapterStatus(ctx: any) {
   if (!ctx?.hasUI) return;
   for (const key of CODX_ADAPTER_STATUS_KEYS) {
@@ -403,10 +357,8 @@ function suppressCodexAdapterStatus(ctx: any) {
   }
 }
 
-/** Restore adapter status when switching away from Codex. */
 function restoreCodexAdapterStatus(ctx: any) {
   if (!ctx?.hasUI) return;
-  // Clear override — adapter will re-set on its own handler.
   for (const key of CODX_ADAPTER_STATUS_KEYS) {
     try { ctx.ui.setStatus(key, undefined); } catch { /* ignore */ }
   }
@@ -418,7 +370,12 @@ export default function (pi: ExtensionAPI) {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let pollInFlight: Promise<void> | null = null;
   let pollQueued = false;
-  let widgetActive = false;
+  let footerActive = false;
+  let setupTimer: ReturnType<typeof setTimeout> | null = null;
+  let tuiRef: any = null;
+  let thinkingLevel = "off";
+
+  // ── Polling ─────────────────────────────────────────────────────────────
 
   async function runPoll() {
     state.data = await fetchWithCache();
@@ -433,66 +390,201 @@ export default function (pi: ExtensionAPI) {
     } while (pollQueued);
   }
 
-  function showWidget(ctx: any) {
-    if (!ctx?.ui) return;
-    try {
-      ctx.ui.setWidget(
-        WIDGET_KEY,
-        (_tui: any, theme: any) => new CodexWidget(state, theme),
-        { placement: "belowEditor" },
-      );
-      widgetActive = true;
-    } catch { /* ignore */ }
+  // ── Footer ──────────────────────────────────────────────────────────────
+
+  function cancelSetupTimer() {
+    if (setupTimer) { clearTimeout(setupTimer); setupTimer = null; }
   }
 
-  function hideWidget(ctx: any) {
-    try { ctx?.ui?.setWidget(WIDGET_KEY, undefined); } catch { /* ignore */ }
-    widgetActive = false;
+  function setupFooter(ctx: any) {
+    if (!ctx.ui) return;
+    // Belt-and-suspenders: clear any stale below-editor widget from old version
+    try { ctx.ui.setWidget("pi-codex-bars", undefined); } catch { /* ignore */ }
+
+    ctx.ui.setFooter((tui: any, theme: any, footerData: any) => {
+      tuiRef = tui;
+      const unsub = footerData.onBranchChange(() => tui.requestRender());
+
+      return {
+        dispose: unsub,
+        invalidate() {},
+        render(width: number): string[] {
+          // ── Line 1: cwd ────────────────────────────────────────────────
+          let pwd = ctx.sessionManager.getCwd();
+          const home = process.env.HOME || process.env.USERPROFILE;
+          if (home && pwd.startsWith(home)) pwd = `~${pwd.slice(home.length)}`;
+          const branch = footerData.getGitBranch();
+          if (branch) pwd = `${pwd} (${branch})`;
+          const sessionName = ctx.sessionManager.getSessionName();
+          if (sessionName) pwd = `${pwd} • ${sessionName}`;
+          const pwdLine = truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "..."));
+
+          // ── Line 2: stats + Codex bar + model ──────────────────────────
+          let totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheWrite = 0, totalCost = 0;
+          for (const entry of ctx.sessionManager.getEntries()) {
+            if (entry.type === "message" && entry.message.role === "assistant") {
+              totalInput += entry.message.usage.input;
+              totalOutput += entry.message.usage.output;
+              totalCacheRead += entry.message.usage.cacheRead;
+              totalCacheWrite += entry.message.usage.cacheWrite;
+              totalCost += entry.message.usage.cost.total;
+            }
+          }
+
+          const contextUsage = ctx.getContextUsage();
+          const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
+          const contextPercentValue = contextUsage?.percent ?? 0;
+          const contextPercent = contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
+
+          const statsParts: string[] = [];
+          if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}`);
+          if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
+          if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
+          if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
+          let usingSubscription = false;
+          try { usingSubscription = ctx.model ? ctx.modelRegistry.isUsingOAuth(ctx.model) : false; } catch { /* ignore */ }
+          if (totalCost || usingSubscription) {
+            statsParts.push(`$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`);
+          }
+
+          let contextPercentStr: string;
+          const contextPercentDisplay = contextPercent === "?"
+            ? `?/${formatTokens(contextWindow)}`
+            : `${contextPercent}%/${formatTokens(contextWindow)}`;
+          if (contextPercentValue > 90) contextPercentStr = theme.fg("error", contextPercentDisplay);
+          else if (contextPercentValue > 70) contextPercentStr = theme.fg("warning", contextPercentDisplay);
+          else contextPercentStr = contextPercentDisplay;
+          statsParts.push(contextPercentStr);
+          const statsLeft = statsParts.join(" ");
+
+          // Model right
+          const model = ctx.model;
+          let rightSide = model?.id || "no-model";
+          if (model?.reasoning) {
+            const level = thinkingLevel || "off";
+            rightSide = level === "off" ? `${rightSide} • thinking off` : `${rightSide} • ${level}`;
+          }
+          if (footerData.getAvailableProviderCount() > 1 && model) {
+            const withProvider = `(${model.provider}) ${rightSide}`;
+            if (visibleWidth(statsLeft) + 2 + visibleWidth(withProvider) <= width) {
+              rightSide = withProvider;
+            }
+          }
+
+          // Codex bar centered between stats and model
+          const statsVisible = visibleWidth(statsLeft);
+          const modelVisible = visibleWidth(rightSide);
+          const minGap = 2;
+          const gapTotal = width - statsVisible - modelVisible - minGap * 2;
+          let barSpace = gapTotal >= 12 ? gapTotal : 0;
+          const bars = barSpace > 0 ? renderFooterCodexBar(theme, state.data, state.loading, barSpace) : "";
+          const barsVisible = visibleWidth(stripAnsi(bars));
+
+          let statsLine: string;
+          if (barsVisible > 0) {
+            const centerVisible = barsVisible;
+            const contentW = statsVisible + minGap + centerVisible + minGap + modelVisible;
+            if (contentW <= width) {
+              const gapLeft = Math.max(minGap, Math.floor((width - statsVisible - centerVisible - modelVisible) / 2));
+              const gapRight = width - statsVisible - centerVisible - modelVisible - gapLeft;
+              statsLine = statsLeft + " ".repeat(gapLeft) + bars + " ".repeat(gapRight) + rightSide;
+            } else {
+              const pad = " ".repeat(Math.max(minGap, width - statsVisible - modelVisible));
+              statsLine = statsLeft + pad + rightSide;
+            }
+          } else {
+            const pad = " ".repeat(Math.max(minGap, width - statsVisible - modelVisible));
+            statsLine = statsLeft + pad + rightSide;
+          }
+
+          const dimStatsLeft = theme.fg("dim", statsLeft);
+          const remainder = statsLine.slice(statsLeft.length);
+          const statsLineStyled = dimStatsLeft + theme.fg("dim", remainder);
+          const lines = [pwdLine, statsLineStyled];
+
+          // Extension statuses
+          const extensionStatuses = footerData.getExtensionStatuses();
+          if (extensionStatuses.size > 0) {
+            const sortedStatuses = Array.from(extensionStatuses.entries())
+              .sort(([a]: any, [b]: any) => String(a).localeCompare(String(b)))
+              .map(([, text]: any) => String(text).replace(/[\r\n\t]/g, " ").replace(/ +/g, " ").trim());
+            lines.push(truncateToWidth(sortedStatuses.join(" "), width, theme.fg("dim", "...")));
+          }
+          return lines;
+        },
+      };
+    });
+    footerActive = true;
+  }
+
+  function clearFooter(ctx: any) {
+    try { ctx?.ui?.setFooter(undefined); } catch { /* ignore */ }
+    try { ctx?.ui?.setWidget("pi-codex-bars", undefined); } catch { /* ignore */ }
+    footerActive = false;
+    tuiRef = null;
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────
 
   pi.on("session_start", async (_event, _ctx) => {
     if (!isCodexModel(_ctx.model)) return;
-    showWidget(_ctx);
+    thinkingLevel = pi.getThinkingLevel?.() ?? "off";
+    setupFooter(_ctx);
     await poll();
+    tuiRef?.requestRender();
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
+    pollTimer = setInterval(() => { void poll().then(() => tuiRef?.requestRender()); }, POLL_INTERVAL_MS);
   });
 
-  // Suppress adapter status on every turn when Codex is active.
-  // turn_start fires after model_select — gives adapter time to set
-  // its status first, then we clear. Defensive: if adapter changes
-  // timing, status merely reappears instead of breaking.
   pi.on("turn_start", async (_event, _ctx) => {
     if (isCodexModel(_ctx.model)) suppressCodexAdapterStatus(_ctx);
   });
 
   pi.on("model_select", async (_event, _ctx) => {
     if (!isCodexModel(_event.model)) {
-      hideWidget(_ctx);
+      // Always release Codex ownership on non-Codex model.
+      cancelSetupTimer();
+      footerActive = false;
+      tuiRef = null;
+      // Only clear the footer UI if not switching to Go (pi-go-bars owns it).
+      if (!isGoModel(_event.model)) {
+        try { _ctx?.ui?.setFooter(undefined); } catch { /* ignore */ }
+      }
       restoreCodexAdapterStatus(_ctx);
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       return;
     }
-    if (!widgetActive) {
-      showWidget(_ctx);
-      await poll();
+    // Defer setup so pi-go-bars clears its footer first (runs before our timer).
+    cancelSetupTimer();
+    setupTimer = setTimeout(() => {
+      setupTimer = null;
+      if (!isCodexModel(_event.model)) return;
+      if (footerActive) return;
+      thinkingLevel = pi.getThinkingLevel?.() ?? "off";
+      setupFooter(_ctx);
+      if (!state.data || state.loading) { poll(); }
+      tuiRef?.requestRender();
       if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
-    }
+      pollTimer = setInterval(() => { void poll().then(() => tuiRef?.requestRender()); }, POLL_INTERVAL_MS);
+    }, 0);
+  });
+
+  pi.on("thinking_level_select", async (_event, _ctx) => {
+    thinkingLevel = _event.level;
+    tuiRef?.requestRender();
   });
 
   pi.on("session_shutdown", async (_event, _ctx) => {
+    cancelSetupTimer();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    hideWidget(_ctx);
+    clearFooter(_ctx);
     restoreCodexAdapterStatus(_ctx);
   });
 
   // ── Commands ───────────────────────────────────────────────────────────
 
   pi.registerCommand("codex", {
-    description: "Show OpenAI Codex usage (session / daily)",
+    description: "Show OpenAI Codex usage (5h window)",
     handler: async (_args, _ctx) => {
       try {
         if (_ctx.ui) {
@@ -503,6 +595,7 @@ export default function (pi: ExtensionAPI) {
         }
       } catch { /* ignore */ }
       await poll();
+      tuiRef?.requestRender();
     },
   });
 }

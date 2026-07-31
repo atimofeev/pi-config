@@ -28,7 +28,6 @@ import * as os from "node:os";
 
 interface CodexUsageWindow {
   usagePercent: number;
-  resetInSec: number;
 }
 
 interface CodexUsageData {
@@ -60,7 +59,7 @@ function readCodexToken(): string | null {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const CACHE_TTL_MS = 90_000;
-const CACHE_FILE = path.join(os.tmpdir(), "pi", "pi-codex-bars-cache.json");
+const CACHE_FILE = path.join(os.tmpdir(), "pi", "pi-codex-bars-v2-cache.json");
 
 function readCache(): CodexUsageData | null {
   try {
@@ -105,7 +104,6 @@ async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
     return {
       usage: {
         usagePercent: typeof window?.used_percent === "number" ? window.used_percent : 0,
-        resetInSec: typeof window?.reset_after_seconds === "number" ? window.reset_after_seconds : 0,
       },
       fetchedAt: Date.now(),
     };
@@ -134,19 +132,6 @@ async function fetchWithCache(): Promise<CodexUsageData> {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Formatting helpers
 // ═══════════════════════════════════════════════════════════════════════════════
-
-function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "now";
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0 && h > 0) return `${d}d ${h}h`;
-  if (d > 0) return `${d}d`;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  if (m > 0) return `${m}m`;
-  return "<1m";
-}
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -190,7 +175,6 @@ function fgToBgAnsi(fgAnsi: string): string {
 interface Win {
   label: string;
   pct: number;
-  resetSec: number;
 }
 
 function renderBarSegment(t: any, w: Win, barSlots: number): string {
@@ -232,31 +216,24 @@ function renderFooterCodexBar(
   if (!data.usage) return "";
 
   const staleSuffix = data.stale ? t.fg("warning", " stale") : "";
-  const elapsed = data.fetchedAt ? Math.floor((Date.now() - data.fetchedAt) / 1000) : 0;
-  const w: Win = { label: "5h", pct: data.usage.usagePercent, resetSec: Math.max(0, data.usage.resetInSec - elapsed) };
+  const w: Win = { label: "5h", pct: data.usage.usagePercent };
   const staleW = visibleWidth(staleSuffix);
 
-  // Determine minimum viable layout: try label+reset, then label only, then bare
+  // Determine minimum viable layout: try label, then bare
   let barSlots = 4;
   let showLabel = false;
-  let showReset = false;
 
   const bareWidth = visibleWidth("Codex") + 1 + 4 + staleW; // "Codex" + " " + bar + stale
   if (bareWidth > maxWidth) return "";
 
-  const withLabelReset = visibleWidth("Codex") + 1 + w.label.length + 1 + 4 +
-    (w.resetSec > 0 ? 3 + visibleWidth(formatDuration(w.resetSec)) : 0) + staleW;
   const withLabel = visibleWidth("Codex") + 1 + w.label.length + 1 + 4 + staleW;
-
-  if (withLabelReset <= maxWidth) { showLabel = true; showReset = true; }
-  else if (withLabel <= maxWidth) { showLabel = true; }
-  // else bare: no label, no reset — 4-char bar only
+  if (withLabel <= maxWidth) { showLabel = true; }
+  // else bare: no label — 4-char bar only
 
   // Expand bar to fill remaining space
   let used = visibleWidth("Codex");
   used += showLabel ? 1 + w.label.length + 1 : 1;
   used += barSlots;
-  if (showReset && w.resetSec > 0) used += 3 + visibleWidth(formatDuration(w.resetSec));
   used += staleW;
   const remaining = Math.max(0, maxWidth - used);
   barSlots = Math.min(20, barSlots + remaining);
@@ -265,8 +242,6 @@ function renderFooterCodexBar(
   if (showLabel) parts.push(t.fg("muted", " " + w.label + " "));
   else parts.push(" ");
   parts.push(renderBarSegment(t, w, barSlots));
-  if (showReset && w.resetSec > 0)
-    parts.push(t.fg("dim", " \u27F3 " + formatDuration(w.resetSec)));
   return parts.join("") + staleSuffix;
 }
 
@@ -309,12 +284,8 @@ function buildDetailOverlay(
       const bar =
         t.fg(color, "\u2588".repeat(Math.max(0, filled))) +
         t.fg("dim", "\u2591".repeat(Math.max(0, barW - filled)));
-      const reset =
-        data.usage.resetInSec > 0
-          ? t.fg("dim", "  resets in " + formatDuration(data.usage.resetInSec))
-          : "";
       lines.push(
-        t.fg("muted", "5h".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`) + reset,
+        t.fg("muted", "5h".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`),
       );
       lines.push("");
     }

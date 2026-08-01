@@ -11,7 +11,7 @@
     "applyPatchOnly": false
   },
   "ui": {
-    "statusLine": true,
+    "statusLine": false,
     "toolRendering": true,
     "backgroundShellWidget": true,
     "backgroundShellToggleShortcut": "alt+w",

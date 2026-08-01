@@ -178,7 +178,7 @@ interface Win {
 }
 
 function renderBarSegment(t: any, w: Win, barSlots: number): string {
-  const barCol = "muted";
+  const barCol = "dim";
   const barBg = fgToBgAnsi(t.getFgAnsi(barCol));
   const v = clampPercent(w.pct);
   const label = v + "%";

@@ -81,7 +81,7 @@ function readJjBookmark(root: string): string | null {
       .filter(Boolean) ?? [];
 
     if (names.length === 0) continue;
-    return names.map((name) => (distance === 0 ? name : `${name}⇡${distance}`)).join(",");
+    return names.map((name) => (distance === 0 ? name : `${name}↑ ${distance}`)).join(",");
   }
 
   return null;
@@ -116,6 +116,19 @@ function wrapFooterData(footerData: any, getCwd: () => string | undefined): any 
       return Reflect.get(target, prop, receiver);
     },
   });
+}
+
+function patchSharedFooterData(ctx: any): void {
+  const ui = ctx?.ui;
+  if (!ui) return;
+
+  // Extension contexts have isolated ui wrappers, but custom footers share footerData.
+  ui.setFooter((_tui: any, _theme: any, footerData: any) => {
+    const originalGetGitBranch = footerData.getGitBranch.bind(footerData);
+    footerData.getGitBranch = () => resolveJjBookmark(cwdFromContext(ctx)) ?? originalGetGitBranch();
+    return { render: () => [], invalidate() {}, dispose() {} };
+  });
+  ui.setFooter(undefined);
 }
 
 function wrapFooterComponent(component: any, tui: any, getCwd: () => string | undefined): any {
@@ -173,7 +186,10 @@ function patchBuiltInFooter(): void {
 patchBuiltInFooter();
 
 export default function (pi: ExtensionAPI) {
-  pi.on("session_start", (_event, ctx) => patchUi(ctx));
+  pi.on("session_start", (_event, ctx) => {
+    patchSharedFooterData(ctx);
+    patchUi(ctx);
+  });
   pi.on("model_select", (_event, ctx) => patchUi(ctx));
   pi.on("turn_start", (_event, ctx) => patchUi(ctx));
 }

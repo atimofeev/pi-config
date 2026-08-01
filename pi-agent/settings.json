@@ -41,7 +41,7 @@
   },
   "treeFilterMode": "default",
   "subagents": {
-    "defaultModel": "opencode-go/deepseek-v4-pro",
+    "defaultModel": "opencode-go/deepseek-v4-flash",
     "agentOverrides": {
       "scout": {
         "model": "opencode-go/deepseek-v4-flash"

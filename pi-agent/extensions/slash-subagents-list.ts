@@ -87,21 +87,18 @@ function loadSettings(): Record<string, unknown> | null {
   }
 }
 
-function resolveBuiltinModel(agentName: string, settings: Record<string, unknown> | null): string | undefined {
-  if (!settings) return undefined;
-  const subagents = settings.subagents as Record<string, unknown> | undefined;
-  if (!subagents) return undefined;
-
-  // Check agent-specific override
-  const overrides = subagents.agentOverrides as Record<string, Record<string, string>> | undefined;
-  if (overrides?.[agentName]?.model) {
-    return overrides[agentName]!.model!;
-  }
-
-  // Use subagents defaultModel or top-level defaultModel
-  const defaultModel = (subagents.defaultModel as string) || (settings.defaultModel as string);
-  if (!defaultModel) return undefined;
-  return defaultModel;
+function resolveBuiltinModel(
+  agentName: string,
+  settings: Record<string, unknown> | null,
+  sessionModel?: string,
+): string | undefined {
+  const subagents = settings?.subagents as Record<string, unknown> | undefined;
+  const overrides = subagents?.agentOverrides as Record<string, Record<string, string>> | undefined;
+  return overrides?.[agentName]?.model
+    || (subagents?.defaultModel as string)
+    || sessionModel
+    || (settings?.defaultModel as string)
+    || undefined;
 }
 
 function findNearestProjectRoot(cwd: string): string | null {
@@ -191,7 +188,7 @@ function readChainFile(filePath: string, source: ChainMeta["source"]): ChainMeta
   }
 }
 
-function discoverAll(cwd: string): {
+function discoverAll(cwd: string, sessionModel?: string): {
   agents: AgentMeta[];
   chains: ChainMeta[];
 } {
@@ -214,7 +211,7 @@ function discoverAll(cwd: string): {
         if (agent) {
           // Resolve model from settings: overrides → defaults
           if (!agent.model) {
-            agent.model = resolveBuiltinModel(agent.name, settings);
+            agent.model = resolveBuiltinModel(agent.name, settings, sessionModel);
           }
           agents.push(agent);
         }
@@ -346,7 +343,8 @@ export default function register(pi: ExtensionAPI): void {
     description: "List available agents (builtin, user, project)",
     handler: async (_args: string, ctx: ExtensionContext) => {
       try {
-        const { agents, chains } = discoverAll(cwd);
+        const sessionModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined;
+        const { agents, chains } = discoverAll(cwd, sessionModel);
         const output = formatAgents(agents, chains);
         pi.sendMessage({
           customType: "agents-list",

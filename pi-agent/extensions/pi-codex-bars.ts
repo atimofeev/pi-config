@@ -209,8 +209,8 @@ function renderFooterCodexBar(
   maxWidth: number,
 ): string {
   if (loading) {
-    return visibleWidth(t.fg("dim", "Codex loading...")) <= maxWidth
-      ? t.fg("dim", "Codex loading...") : "";
+    return visibleWidth(t.fg("dim", "loading...")) <= maxWidth
+      ? t.fg("dim", "loading...") : "";
   }
   if (!data || data.error) return "";
   if (!data.usage) return "";
@@ -223,24 +223,22 @@ function renderFooterCodexBar(
   let barSlots = 4;
   let showLabel = false;
 
-  const bareWidth = visibleWidth("Codex") + 1 + 4 + staleW; // "Codex" + " " + bar + stale
+  const bareWidth = 4 + staleW;
   if (bareWidth > maxWidth) return "";
 
-  const withLabel = visibleWidth("Codex") + 1 + w.label.length + 1 + 4 + staleW;
+  const withLabel = w.label.length + 1 + 4 + staleW;
   if (withLabel <= maxWidth) { showLabel = true; }
   // else bare: no label — 4-char bar only
 
   // Expand bar to fill remaining space
-  let used = visibleWidth("Codex");
-  used += showLabel ? 1 + w.label.length + 1 : 1;
+  let used = showLabel ? w.label.length + 1 : 0;
   used += barSlots;
   used += staleW;
   const remaining = Math.max(0, maxWidth - used);
   barSlots = Math.min(20, barSlots + remaining);
 
-  const parts: string[] = [t.fg("dim", "Codex")];
-  if (showLabel) parts.push(t.fg("muted", " " + w.label + " "));
-  else parts.push(" ");
+  const parts: string[] = [];
+  if (showLabel) parts.push(t.fg("muted", w.label + " "));
   parts.push(renderBarSegment(t, w, barSlots));
   return parts.join("") + staleSuffix;
 }

@@ -1,11 +1,10 @@
-import { FooterComponent, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { FooterComponent } from "@earendil-works/pi-coding-agent";
 import { existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const SEARCH_DEPTH = 100;
 const CACHE_TTL_MS = 1500;
-const REFRESH_MS = 2000;
 
 interface CacheEntry {
   value: string | null;
@@ -13,7 +12,6 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const patchedUis = new WeakSet<object>();
 
 function findJjRoot(cwd: string, maxDepth = SEARCH_DEPTH): string | null {
   if (!cwd) return null;
@@ -35,7 +33,7 @@ function findJjRoot(cwd: string, maxDepth = SEARCH_DEPTH): string | null {
   return null;
 }
 
-function resolveJjBookmark(cwd: string | undefined): string | null {
+export function resolveJjBookmark(cwd: string | undefined): string | null {
   if (!cwd) return null;
 
   const root = findJjRoot(cwd);
@@ -103,72 +101,6 @@ function patchFooterLines(lines: string[], cwd: string | undefined): string[] {
   return [replaceBranch(lines[0], branch), ...lines.slice(1)];
 }
 
-function cwdFromContext(ctx: any): string | undefined {
-  return ctx?.sessionManager?.getCwd?.() ?? ctx?.cwd;
-}
-
-function wrapFooterData(footerData: any, getCwd: () => string | undefined): any {
-  return new Proxy(footerData, {
-    get(target, prop, receiver) {
-      if (prop === "getGitBranch") {
-        return () => resolveJjBookmark(getCwd()) ?? target.getGitBranch();
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  });
-}
-
-function patchSharedFooterData(ctx: any): void {
-  const ui = ctx?.ui;
-  if (!ui) return;
-
-  // Extension contexts have isolated ui wrappers, but custom footers share footerData.
-  ui.setFooter((_tui: any, _theme: any, footerData: any) => {
-    const originalGetGitBranch = footerData.getGitBranch.bind(footerData);
-    footerData.getGitBranch = () => resolveJjBookmark(cwdFromContext(ctx)) ?? originalGetGitBranch();
-    return { render: () => [], invalidate() {}, dispose() {} };
-  });
-  ui.setFooter(undefined);
-}
-
-function wrapFooterComponent(component: any, tui: any, getCwd: () => string | undefined): any {
-  const refresh = setInterval(() => {
-    if (findJjRoot(getCwd() ?? "")) tui?.requestRender?.();
-  }, REFRESH_MS);
-  refresh.unref?.();
-
-  return {
-    invalidate() {
-      component.invalidate?.();
-    },
-    render(width: number) {
-      return patchFooterLines(component.render(width), getCwd());
-    },
-    dispose() {
-      clearInterval(refresh);
-      component.dispose?.();
-    },
-  };
-}
-
-function patchUi(ctx: any): void {
-  const ui = ctx?.ui;
-  if (!ui || patchedUis.has(ui)) return;
-  patchedUis.add(ui);
-
-  const originalSetFooter = ui.setFooter.bind(ui);
-  ui.setFooter = (factory: any) => {
-    if (!factory) return originalSetFooter(factory);
-
-    return originalSetFooter((tui: any, theme: any, footerData: any) => {
-      const getCwd = () => cwdFromContext(ctx);
-      const wrappedFooterData = wrapFooterData(footerData, getCwd);
-      const component = factory(tui, theme, wrappedFooterData);
-      return wrapFooterComponent(component, tui, getCwd);
-    });
-  };
-}
-
 function patchBuiltInFooter(): void {
   const proto = FooterComponent.prototype as any;
   if (proto.__jjFooterPatched) return;
@@ -185,11 +117,4 @@ function patchBuiltInFooter(): void {
 
 patchBuiltInFooter();
 
-export default function (pi: ExtensionAPI) {
-  pi.on("session_start", (_event, ctx) => {
-    patchSharedFooterData(ctx);
-    patchUi(ctx);
-  });
-  pi.on("model_select", (_event, ctx) => patchUi(ctx));
-  pi.on("turn_start", (_event, ctx) => patchUi(ctx));
-}
+export default function () {}

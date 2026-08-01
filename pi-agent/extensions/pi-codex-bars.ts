@@ -21,6 +21,7 @@ import {
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { resolveJjBookmark } from "./jj-footer.ts";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -382,7 +383,7 @@ export default function (pi: ExtensionAPI) {
           let pwd = ctx.sessionManager.getCwd();
           const home = process.env.HOME || process.env.USERPROFILE;
           if (home && pwd.startsWith(home)) pwd = `~${pwd.slice(home.length)}`;
-          const branch = footerData.getGitBranch();
+          const branch = resolveJjBookmark(ctx.sessionManager.getCwd()) ?? footerData.getGitBranch();
           if (branch) pwd = `${pwd} (${branch})`;
           const sessionName = ctx.sessionManager.getSessionName();
           if (sessionName) pwd = `${pwd} • ${sessionName}`;

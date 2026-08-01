@@ -10,7 +10,7 @@
         "~/.kube/homelab.yml"
       ],
       "command": "npx",
-      "directTools": true
+      "directTools": false
     },
     "nixos": {
       "args": [
@@ -30,7 +30,7 @@
         "hashicorp/terraform-mcp-server:0.5.1"
       ],
       "command": "docker",
-      "directTools": true
+      "directTools": false
     },
     "aws-docs": {
       "args": [
@@ -48,7 +48,7 @@
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
-      "directTools": true
+      "directTools": false
     }
   }
 }

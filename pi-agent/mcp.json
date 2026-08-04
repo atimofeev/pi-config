@@ -49,6 +49,11 @@
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
       "directTools": false
+    },
+    "sidero-docs": {
+      "type": "http",
+      "url": "https://docs.siderolabs.com/mcp",
+      "directTools": false
     }
   }
 }

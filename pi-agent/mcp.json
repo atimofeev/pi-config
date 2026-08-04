@@ -4,13 +4,13 @@
   },
   "mcpServers": {
     "kubernetes": {
-      "args": [
-        "mcp-server-kubernetes",
-        "--kubeconfig",
-        "~/.kube/homelab.yml"
-      ],
       "command": "npx",
-      "directTools": false
+      "args": ["mcp-server-kubernetes"],
+      "directTools": false,
+      "env": {
+        "K8S_CONTEXT": "mcp-none",
+        "KUBECONFIG_PATH": "/home/atimofeev/.kube/config"
+      }
     },
     "nixos": {
       "args": [

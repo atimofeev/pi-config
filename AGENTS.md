@@ -58,7 +58,6 @@ name: my-agent                 # Required. Agent name for delegation and /agents
 description: |                 # Optional. Shown in agent list. First line is headline.
   What this agent does.
   Can span multiple lines.
-model: deepseek-v4-flash       # Model override. Omit to inherit parent default.
 tools: bash, read              # Comma-separated tool grants. Omit for no tools.
 thinking: low                  # Thinking level: off, low, medium, high, xhigh
 systemPromptMode: replace      # replace = full override, prepend = add before builtin
@@ -78,7 +77,7 @@ System prompt body. Markdown. Sent as the agent's system message.
 |-------|----------|---------|-------|
 | `name` | Yes | — | Single word, kebab-case. Unique within scope. |
 | `description` | No | — | Pipe-block for multi-line. Keep first line short (shown in `/agents`). |
-| `model` | No | parent default | Usually `deepseek-v4-flash` for cheap agents, `deepseek-v4-pro` for heavy. |
+| `model` | No | parent model | Omit unless the task needs a deliberately different model. |
 | `tools` | No | none | Comma-separated. Available tools depend on loaded extensions. |
 | `thinking` | No | parent setting | `low` for simple agents, `medium`/`high` for complex. |
 | `systemPromptMode` | No | parent default | `replace` = full system prompt override. `prepend` = add before builtin. |
@@ -94,8 +93,9 @@ System prompt body. Markdown. Sent as the agent's system message.
 ### Conventions for this repo
 
 **Model choice:**
-- `deepseek-v4-flash` — all custom subagents. Cheap, fast, sufficient for focused tasks.
-- `deepseek-v4-pro` — only via settings.json overrides for builtins (planner, worker, reviewer, researcher, oracle).
+- Default is `deepseek-v4-pro` via the `opencode-go` provider (`settings.json` `defaultModel`/`defaultProvider`).
+- Custom subagents omit `model:` and inherit the parent model; no per-agent model hardcoding.
+- Override only when a task deliberately needs a different model — `deepseek-v4-flash` for cheap focused tasks, `deepseek-v4-pro` for heavy reasoning (e.g. `subagents.agentOverrides` for builtins).
 
 **Context mode:**
 - `fresh` — all custom subagents. Self-contained tasks with no parent history dependency.
@@ -154,7 +154,7 @@ Do NOT create an agent when:
 Only execute when the user explicitly asks to create an agent.
 
 1. Identify the task pattern and its constraints.
-2. Choose model: `deepseek-v4-flash` unless task requires reasoning.
+2. Choose model: omit `model:` to inherit the parent model; override only for a deliberate task-specific need (`deepseek-v4-flash` for cheap I/O-bound, `deepseek-v4-pro` for heavy reasoning).
 3. Choose tools: grant exactly what the task calls. Check available tool names.
 4. Write a tight system prompt: goal, steps, output format, rules, stop conditions.
 5. Add frontmatter following conventions above.
@@ -183,7 +183,8 @@ Anti-patterns to avoid:
 ### settings.json
 
 Central runtime config. Edit here for persistent changes:
-- `model` / `provider` — default model for parent agent
+- `model` / `provider` — default model/provider for parent agent
+- `subagents.defaultModel` — default model for all model-less subagents (builtins + custom)
 - `theme` — TUI theme
 - `packages` — loaded npm extensions
 - `subagents.agentOverrides` — per-builtin agent model/thinking/context overrides
@@ -205,7 +206,7 @@ Builtin agent overrides are preferred over copying builtin files. Example:
 ### mcp.json
 
 MCP server connections. Currently:
-- `kubernetes` — local kubeconfig at `~/.kube/homelab.yml`
+- `kubernetes` — `mcp-server-kubernetes` via npx, common kubeconfig `~/.kube/config`, context `mcp-none` (no single-context filtering)
 - `nixos` — package/option search (Docker)
 - `terraform` — module/provider registry (Docker)
 
@@ -297,7 +298,7 @@ Changes take effect immediately — pi-agent re-reads agent files on each delega
 - **No Nix flake or package.nix** here. pi-agent itself is installed via home-manager in `nixos-config` repo.
 - **Caveman mode is enforced** — SYSTEM.md sets response style. Agents should match: terse, technical, no fluff.
 - **User is DevOps/infra engineer** managing prod k8s, ClickHouse, Kafka. Works in Russian with colleagues.
-- **Model default is `deepseek-v4-pro`** via opencode-go provider. Flash models for cheap subagents.
+- **Model default is `deepseek-v4-pro`** via opencode-go provider; subagents inherit it (omit `model:`). Flash only for deliberate cheap overrides.
 - **NixOS host.** Missing tools → `nix run nixpkgs#app -- <args>`.
 
 ## Related repositories

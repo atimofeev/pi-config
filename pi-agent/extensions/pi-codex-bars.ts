@@ -1,7 +1,7 @@
 /**
  * pi-codex-bars — Codex usage footer for pi
  *
- * Renders 5h OpenAI Codex usage inline in a custom 2-line footer
+ * Renders 7d OpenAI Codex usage inline in a custom 2-line footer
  * matching pi-go-bars layout. Replaces the old below-editor widget.
  *
  * Usage:
@@ -217,7 +217,7 @@ function renderFooterCodexBar(
   if (!data.usage) return "";
 
   const staleSuffix = data.stale ? t.fg("warning", " stale") : "";
-  const w: Win = { label: "5h", pct: data.usage.usagePercent };
+  const w: Win = { label: "7d", pct: data.usage.usagePercent };
   const staleW = visibleWidth(staleSuffix);
 
   // Determine minimum viable layout: try label, then bare
@@ -284,7 +284,7 @@ function buildDetailOverlay(
         t.fg(color, "\u2588".repeat(Math.max(0, filled))) +
         t.fg("dim", "\u2591".repeat(Math.max(0, barW - filled)));
       lines.push(
-        t.fg("muted", "5h".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`),
+        t.fg("muted", "7d".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`),
       );
       lines.push("");
     }
@@ -554,7 +554,7 @@ export default function (pi: ExtensionAPI) {
   // ── Commands ───────────────────────────────────────────────────────────
 
   pi.registerCommand("codex", {
-    description: "Show OpenAI Codex usage (5h window)",
+    description: "Show OpenAI Codex usage (7d window)",
     handler: async (_args, _ctx) => {
       try {
         if (_ctx.ui) {

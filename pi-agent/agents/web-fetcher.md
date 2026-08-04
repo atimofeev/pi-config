@@ -4,7 +4,6 @@ description: |
   Web content fetcher. Fetches URLs using web_fetch tool, searches using web_search tool.
   Returns raw content. No summarizer, no user approval.
   Parent handles search; this agent handles raw content retrieval.
-model: opencode-go/deepseek-v4-flash
 tools: web_fetch, web_search
 thinking: low
 systemPromptMode: replace

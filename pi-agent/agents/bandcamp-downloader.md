@@ -4,7 +4,6 @@ description: |
   Downloads tracks/albums from bandcamp.com links to ~/Downloads using yt-dlp.
   Auto-detects bandcamp URLs.
 tools: bash
-model: opencode-go/deepseek-v4-flash
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false

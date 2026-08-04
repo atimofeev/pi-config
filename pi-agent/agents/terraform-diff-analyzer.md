@@ -5,7 +5,6 @@ description: |
   destroy/recreate blocks, identifies trigger cause (list reorder, force-replace
   attribute, computed-only diff), and reports concise impact. No speculation —
   uses only the diff content provided.
-model: opencode-go/deepseek-v4-flash
 systemPromptMode: replace
 inheritProjectContext: false
 inheritSkills: false

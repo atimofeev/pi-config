@@ -14,7 +14,7 @@
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
   "hideThinkingBlock": false,
-  "lastChangelogVersion": "0.81.1",
+  "lastChangelogVersion": "0.83.0",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",

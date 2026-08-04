@@ -5,11 +5,13 @@ home := env_var('HOME')
 default:
     @just --list --unsorted
 
-install: link-pi-agent link-skills link-ponytail link-rpiv-web-tools
+install: link-pi-agent link-skills link-caveman link-ponytail link-rpiv-web-tools
 
 link-pi-agent: (_link (repo + "/pi-agent") (home + "/.pi/agent"))
 
 link-skills: (_link (repo + "/skills") (home + "/.agents/skills"))
+
+link-caveman: (_link (repo + "/pi-agent/caveman.json") (home + "/.config/pi/agent/caveman.json"))
 
 link-ponytail: (_link (repo + "/ponytail.json") (home + "/.config/ponytail/config.json"))
 

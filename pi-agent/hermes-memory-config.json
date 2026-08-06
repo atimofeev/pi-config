@@ -1,0 +1,5 @@
+{
+  "consolidationTimeoutMs": 600000,
+  "llmModelOverride": "deepseek/deepseek-v4-flash",
+  "llmThinkingOverride": "low"
+}

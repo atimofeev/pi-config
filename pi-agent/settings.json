@@ -13,7 +13,7 @@
     "amazon-bedrock/global.anthropic.claude-sonnet-5",
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
-  "hideThinkingBlock": false,
+  "hideThinkingBlock": true,
   "lastChangelogVersion": "0.83.0",
   "packages": [
     "npm:pi-mcp-adapter",
@@ -47,7 +47,13 @@
         "model": "deepseek/deepseek-v4-flash"
       },
       "researcher": {
-        "tools": ["read", "write", "web_search", "web_fetch", "intercom"]
+        "tools": [
+          "read",
+          "write",
+          "web_search",
+          "web_fetch",
+          "intercom"
+        ]
       }
     }
   },

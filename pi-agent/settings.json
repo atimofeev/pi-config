@@ -1,7 +1,7 @@
 {
   "defaultModel": "gpt-5.6-sol",
   "defaultProvider": "openai-codex",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "enabledModels": [
     "deepseek/deepseek-v4-pro",
     "deepseek/deepseek-v4-flash",

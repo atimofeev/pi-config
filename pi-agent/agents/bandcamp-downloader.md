@@ -1,14 +1,11 @@
 ---
-name: bandcamp-downloader
 description: |
   Downloads tracks/albums from bandcamp.com links to ~/Downloads using yt-dlp.
   Auto-detects bandcamp URLs.
 tools: bash
-systemPromptMode: replace
-inheritProjectContext: false
-inheritSkills: false
-defaultContext: fresh
-maxSubagentDepth: 0
+extensions: false
+skills: false
+model: deepseek/deepseek-v4-flash
 ---
 
 Download Bandcamp tracks/albums to ~/Downloads. Detect bandcamp.com URLs in user request. Single command, report result. No retry loops.

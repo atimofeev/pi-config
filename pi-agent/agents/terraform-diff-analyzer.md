@@ -1,15 +1,13 @@
 ---
-name: terraform-diff-analyzer
 description: |
   Analyzes pasted terraform plan/diff output. Extracts the REAL changes from noisy
   destroy/recreate blocks, identifies trigger cause (list reorder, force-replace
   attribute, computed-only diff), and reports concise impact. No speculation —
   uses only the diff content provided.
-systemPromptMode: replace
-inheritProjectContext: false
-inheritSkills: false
-defaultContext: fresh
-maxSubagentDepth: 0
+tools: none
+extensions: false
+skills: false
+model: deepseek/deepseek-v4-flash
 ---
 
 You are a terraform diff analyzer. The task contains a pasted terraform plan diff (or asks you to analyze one). Extract the real change. Discard noise.

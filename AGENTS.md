@@ -13,13 +13,14 @@ pi-config/
 ├── skills/                    # Shared procedural skills (committed)
 └── pi-agent/                  # Symlink target: ~/.pi/agent → here
     ├── agents/                # Subagent definitions (markdown + YAML frontmatter)
-    ├── extensions/            # TypeScript TUI extensions (/git-tag, /list-agents, codex bars)
+    ├── extensions/            # TypeScript TUI extensions (/git-tag, codex bars)
     ├── bin/                   # Shell scripts (yt-summarize)
     ├── pi-hermes-memory/      # Persistent memory (USER, MEMORY, failures, skills)
     ├── projects-memory/       # Per-project memory files
     ├── npm/                   # Node dependencies (gitignored — installed by pi-agent)
     ├── SYSTEM.md              # Response style, environment, delegation policy
-    ├── settings.json          # Model, provider, theme, packages, subagent overrides
+    ├── settings.json          # Model, provider, theme, packages
+    ├── subagents.json         # @tintinweb/pi-subagents global runtime defaults
     ├── models.json            # Custom model definitions (ollama local models)
     ├── mcp.json               # MCP server connections (kubernetes, nixos, terraform)
     ├── caveman.json           # Response style config
@@ -54,84 +55,80 @@ Subagents are defined as markdown files with YAML frontmatter in `pi-agent/agent
 
 ```markdown
 ---
-name: my-agent                 # Required. Agent name for delegation and /list-agents list
 description: |                 # Optional. Shown in agent list. First line is headline.
   What this agent does.
   Can span multiple lines.
-tools: bash, read              # Comma-separated tool grants. Omit for no tools.
+tools: bash, read              # Built-in tools; `ext:<ext>/<tool>` for extension tools
+                               # `none` = no tools, omit = all built-ins
+extensions: false              # Which extensions load: true (all), false (none), or list
+skills: false                  # Inherit parent skills: true, false, or comma-separated names
+model: deepseek/deepseek-v4-flash  # Optional. Omit to inherit parent model.
 thinking: low                  # Thinking level: off, low, medium, high, xhigh
-systemPromptMode: replace      # replace = full override, prepend = add before builtin
-inheritProjectContext: false   # Whether agent receives project memory/prompts
-inheritSkills: false           # Whether agent receives loaded skills
-defaultContext: fresh          # Context mode: fresh (clean) or fork (branched from parent)
-maxSubagentDepth: 0            # Max nested delegation depth (0 = cannot spawn subagents)
-fallbackModels:                # Optional. Models to try if primary fails
-  - openai/gpt-5-mini
 ---
-System prompt body. Markdown. Sent as the agent's system message.
+System prompt body. Markdown. Sent as the agent's system message (prompt_mode: replace default).
 ```
 
 ### Frontmatter field reference
 
-| Field | Required | Default | Notes |
-|-------|----------|---------|-------|
-| `name` | Yes | — | Single word, kebab-case. Unique within scope. |
-| `description` | No | — | Pipe-block for multi-line. Keep first line short (shown in `/list-agents`). |
-| `model` | No | parent model | Omit unless the task needs a deliberately different model. |
-| `tools` | No | none | Comma-separated. Available tools depend on loaded extensions. |
-| `thinking` | No | parent setting | `low` for simple agents, `medium`/`high` for complex. |
-| `systemPromptMode` | No | parent default | `replace` = full system prompt override. `prepend` = add before builtin. |
-| `inheritProjectContext` | No | false | Set `true` only when agent needs project conventions. |
-| `inheritSkills` | No | false | Set `true` only when agent needs loaded skill procedures. |
-| `defaultContext` | No | parent default | `fresh` = clean context. `fork` = branches from parent session. |
-| `maxSubagentDepth` | No | 2 | `0` prevents agent from spawning subagents. |
-| `fallbackModels` | No | — | List of models to try if primary fails. |
-| `defaultProgress` | No | false | Show progress spinner by default. |
-| `defaultReads` | No | false | Auto-read referenced files by default. |
-| `output` | No | — | Default output file path. |
+Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0.14.x:
+
+| Field | Default | Notes |
+|-------|---------|-------|
+| `description` | filename | Shown in agent list. First line is headline. |
+| `display_name` | — | UI display name |
+| `tools` | all built-ins | Built-in names (`read, bash, edit, write, grep, find, ls`), `*`/`all`, `none`, and `ext:<ext>/<tool>` selectors |
+| `extensions` | `true` | Which extensions load: `true` (all), `false` (none), or comma-separated names |
+| `exclude_extensions` | — | Denylist applied after `extensions` |
+| `skills` | `true` | Inherit parent skills: `true`, `false`, or comma-separated names |
+| `model` | parent model | Omit to inherit. Custom agents pin `deepseek/deepseek-v4-flash`. |
+| `thinking` | parent setting | `off, minimal, low, medium, high, xhigh, max` |
+| `max_turns` | unlimited | Max agentic turns; `0` = unlimited |
+| `prompt_mode` | `replace` | `replace` = body is full system prompt; `append` = appended to parent prompt |
+| `inherit_context` | `false` | Fork parent conversation into agent |
+| `run_in_background` | `false` | Run in background by default |
+| `isolated` | `false` | Built-in tools only; no extensions/skills/context |
+| `enabled` | `true` | `false` hides the agent |
 
 ### Conventions for this repo
 
 **Model choice:**
-- Default is `deepseek-v4-pro` via the `opencode-go` provider (`settings.json` `defaultModel`/`defaultProvider`).
-- Custom subagents omit `model:` and inherit the parent model; no per-agent model hardcoding.
-- Override only when a task deliberately needs a different model — `deepseek-v4-flash` for cheap focused tasks, `deepseek-v4-pro` for heavy reasoning (e.g. `subagents.agentOverrides` for builtins).
+- Parent default is `openai-codex/gpt-5.6-sol` (`settings.json` `defaultModel`/`defaultProvider`).
+- Custom subagents pin `deepseek/deepseek-v4-flash` in frontmatter `model:` — cheap focused tasks.
+- Builtins: `general-purpose` inherits parent, `Plan` inherits parent, `Explore` locally overridden to `deepseek/deepseek-v4-flash`.
 
 **Context mode:**
-- `fresh` — all custom subagents. Self-contained tasks with no parent history dependency.
-- `fork` — builtins (oracle, worker, planner). Needs parent session history.
+- Fresh by default (target default). `inherit_context: true` only when the agent needs parent conversation history.
 
 **Thinking level:**
-- `low` — simple agents (web-fetcher, bandcamp-downloader, test-runner, youtube-summarizer).
-- Not set (inherit) — agents that need reasoning (docs-analyzer, terraform-diff-analyzer).
+- `low` — docs-analyzer and web-fetcher.
+- Not set (inherit) — bandcamp-downloader, terraform-diff-analyzer, test-runner, and youtube-summarizer.
 
 **Tool grants:**
 - Grant only what the agent actually calls. No kitchen-sink grants.
 - `bash` — for running commands (test-runner, bandcamp-downloader, youtube-summarizer).
 - `read` — for reading files (test-runner).
-- `web_fetch, web_search` — for web access (web-fetcher).
-- `mcp` — for MCP doc servers (docs-analyzer).
-- `resolve-library-id, query-docs` — for Context7 documentation (docs-analyzer).
+- `ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search` — web access (web-fetcher).
+- `ext:context7/*, ext:rpiv-web-tools/*, ext:pi-mcp-adapter/mcp` — docs (docs-analyzer).
+- `tools: none` — pure prompt tasks with no tools (terraform-diff-analyzer).
 
-**System prompt mode:**
-- Always `replace` — custom subagents get full system prompt control. No builtin prompt pollution.
+**Prompt mode:**
+- `replace` default — custom subagents get full system prompt control. No builtin prompt pollution.
 
 **Inheritance:**
-- `inheritProjectContext: false` — always. Agents don't need project conventions.
-- `inheritSkills: false` — always. Agents are task-specific, skill-less.
+- `extensions: false` + `skills: false` for pure built-in tasks. Web/docs agents list their extensions explicitly.
 
-**Max subagent depth:**
-- `0` — always. Custom subagents execute tasks directly, never delegate.
+**Nesting:**
+- Custom agents never spawn subagents. Target v0.14.x has no nested subagents (`allowed_subagents` unsupported).
 
 ### Discovery and scope precedence
 
-Agent files are discovered from:
-1. `pi-agent/agents/**/*.md` — what this repo provides (committed, shared)
-2. `~/.pi/agent/agents/**/*.md` — user scope (not in this repo)
-3. `~/.agents/**/*.md` — legacy user scope (not in this repo)
-4. Builtin agents — lowest priority
+Agent files are discovered from (higher priority wins):
+1. `<cwd>/.pi/agents/**/*.md` — project scope (authoritative)
+2. `<cwd>/.agents/agents/**/*.md` — shared workspace (read-only)
+3. `~/.pi/agent/agents/**/*.md` — global scope (this repo)
+4. Embedded defaults (`general-purpose`, `Explore`, `Plan`) — lowest priority
 
-Project scope (this repo) overrides user scope. User scope overrides builtins. Two agents with the same `name` in different scopes: highest priority wins.
+Same name in higher scope overrides lower. `/agents` command (from `@tintinweb/pi-subagents`) lists and manages all.
 
 ## When to create a new agent
 
@@ -145,7 +142,7 @@ When explicitly asked by the user, create a new agent when:
 
 Do NOT create an agent when:
 - It's a one-off task
-- A builtin agent handles it (worker for implementation, reviewer for review)
+- A builtin agent handles it (general-purpose, Explore, Plan)
 - The parent model can do it directly without special constraints
 - User hasn't explicitly requested it
 
@@ -154,7 +151,7 @@ Do NOT create an agent when:
 Only execute when the user explicitly asks to create an agent.
 
 1. Identify the task pattern and its constraints.
-2. Choose model: omit `model:` to inherit the parent model; override only for a deliberate task-specific need (`deepseek-v4-flash` for cheap I/O-bound, `deepseek-v4-pro` for heavy reasoning).
+2. Choose model: pin `deepseek/deepseek-v4-flash` for cheap I/O-bound tasks; omit `model:` to inherit the parent model (`openai-codex/gpt-5.6-sol`) for heavy reasoning.
 3. Choose tools: grant exactly what the task calls. Check available tool names.
 4. Write a tight system prompt: goal, steps, output format, rules, stop conditions.
 5. Add frontmatter following conventions above.
@@ -184,24 +181,22 @@ Anti-patterns to avoid:
 
 Central runtime config. Edit here for persistent changes:
 - `model` / `provider` — default model/provider for parent agent
-- `subagents.defaultModel` — default model for all model-less subagents (builtins + custom)
 - `theme` — TUI theme
 - `packages` — loaded npm extensions
-- `subagents.agentOverrides` — per-builtin agent model/thinking/context overrides
+- `enabledModels` — model allowlist
 
-Builtin agent overrides are preferred over copying builtin files. Example:
+### subagents.json
+
+`@tintinweb/pi-subagents` runtime defaults, separate from settings.json. Global: `~/.pi/agent/subagents.json` (this repo, committed). Project: `<cwd>/.pi/subagents.json` (written by `/agents` → Settings). Project overrides global.
+
+Current global:
 ```json
 {
-  "subagents": {
-    "agentOverrides": {
-      "reviewer": {
-        "model": "deepseek-v4-pro",
-        "thinking": "high"
-      }
-    }
-  }
+  "outputTranscript": false
 }
 ```
+
+No per-subagent transcript files. Other settings (max concurrency, default max turns, grace turns, default join mode, disable defaults, widget mode, scheduling, tool description mode) via `/agents` → Settings or subagents.json.
 
 ### mcp.json
 
@@ -255,10 +250,9 @@ Per-project memory files. One `MEMORY.md` per project. Gitignored — personal s
 
 TUI extensions in TypeScript under `pi-agent/extensions/`:
 - `git-tag.ts` — `/git-tag` command: summarize commits, create tag, push
-- `slash-subagents-list.ts` — `/list-agents` command: list all available subagents
 - `pi-codex-bars.ts` — Codex usage widget (session/daily bars)
 
-Extensions load via `packages` in `settings.json`. Dependencies declared in `npm/package.json` (gitignored, installed by pi-agent at runtime).
+The `/agents` subagent management command ships with the `@tintinweb/pi-subagents` package — no local extension.
 
 ## Shell scripts
 
@@ -298,7 +292,7 @@ Changes take effect immediately — pi-agent re-reads agent files on each delega
 - **No Nix flake or package.nix** here. pi-agent itself is installed via home-manager in `nixos-config` repo.
 - **Caveman mode is enforced** — SYSTEM.md sets response style. Agents should match: terse, technical, no fluff.
 - **User is DevOps/infra engineer** managing prod k8s, ClickHouse, Kafka. Works in Russian with colleagues.
-- **Model default is `deepseek-v4-pro`** via opencode-go provider; subagents inherit it (omit `model:`). Flash only for deliberate cheap overrides.
+- **Model default is `openai-codex/gpt-5.6-sol`** (`settings.json`); custom subagents pin `deepseek/deepseek-v4-flash` in frontmatter. Builtins inherit parent; `Explore` locally overridden to `deepseek/deepseek-v4-flash`.
 - **NixOS host.** Missing tools → `nix run nixpkgs#app -- <args>`.
 
 ## Related repositories

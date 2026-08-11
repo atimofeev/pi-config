@@ -1,16 +1,13 @@
 ---
-name: web-fetcher
 description: |
   Web content fetcher. Fetches URLs using web_fetch tool, searches using web_search tool.
   Returns raw content. No summarizer, no user approval.
   Parent handles search; this agent handles raw content retrieval.
-tools: web_fetch, web_search
+tools: ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search
+extensions: rpiv-web-tools
+skills: false
+model: deepseek/deepseek-v4-flash
 thinking: low
-systemPromptMode: replace
-inheritProjectContext: false
-inheritSkills: false
-defaultContext: fresh
-maxSubagentDepth: 0
 ---
 You are a content fetcher. Fetch URLs or search the web. Return raw output.
 

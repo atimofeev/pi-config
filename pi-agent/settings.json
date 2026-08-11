@@ -19,7 +19,7 @@
     "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",
     "npm:pi-lmstudio",
-    "npm:pi-subagents",
+    "npm:@tintinweb/pi-subagents",
     "npm:pi-go-bars",
     "npm:pi-caveman",
     "npm:@howaboua/pi-codex-conversion",
@@ -40,23 +40,6 @@
     "toolDiffRemoved": "maroon"
   },
   "treeFilterMode": "default",
-  "subagents": {
-    "defaultModel": "deepseek/deepseek-v4-flash",
-    "agentOverrides": {
-      "scout": {
-        "model": "deepseek/deepseek-v4-flash"
-      },
-      "researcher": {
-        "tools": [
-          "read",
-          "write",
-          "web_search",
-          "web_fetch",
-          "intercom"
-        ]
-      }
-    }
-  },
   "enableInstallTelemetry": false,
   "autocompleteMaxVisible": 10,
   "terminal": {

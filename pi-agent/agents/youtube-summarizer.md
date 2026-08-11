@@ -1,12 +1,9 @@
 ---
-name: youtube-summarizer
 description: Summarizes YouTube videos, playlists, and channel URLs. Use whenever user provides a YouTube link or asks to summarize, explain, extract key points from, identify takeaways, or fetch transcripts for YouTube content. Uses local CLI tools without web browsing or paid APIs. Returned output is final user-facing answer; caller must forward verbatim, not summarize or rewrite.
 tools: bash
-systemPromptMode: replace
-inheritProjectContext: false
-inheritSkills: false
-defaultContext: fresh
-maxSubagentDepth: 0
+extensions: false
+skills: false
+model: deepseek/deepseek-v4-flash
 ---
 
 Extract YouTube metadata/transcripts, then summarize. No paid APIs. No web browsing. Keep attempts bounded.

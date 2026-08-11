@@ -81,7 +81,7 @@ Do not ask a child to “investigate” broadly when parent already has a narrow
 ### Trivial latency-sensitive tasks
 
 For trivial, latency-sensitive edits, execute directly. Skip subagent listing,
-scout, worker, and extra review/acceptance wrappers.
+review, and validation wrappers.
 
 Direct criteria:
 - one file

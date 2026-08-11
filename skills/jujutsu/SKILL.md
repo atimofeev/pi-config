@@ -17,6 +17,9 @@ If slash-command preflight already says `vcs: Jujutsu (.jj)` and lists changed f
 1. Inspect exact patch: `jj --no-pager diff --git`.
 2. If one safe logical group, describe working-copy commit: `jj desc -m "type(scope): description"`.
 3. Finalize by creating next empty working-copy commit: `jj new`.
+
+Subset commit (only some files, keep rest in working copy):
+`jj commit -m "type(scope): description" <paths>` — commits only the given paths into a new commit; remaining changes stay in the working copy. This is the ONLY safe primitive for subset commits. Do NOT use `jj split` (launches editor for description, hangs in agent env) or `jj restore` (discards changes, does not move them).
 4. Verify and output evidence: `jj --no-pager st` then output line `COMMITTED: <change-id> | <type(scope): description> | status: ok`. Get change-id from `jj --no-pager log -r @- --no-graph -T 'change_id'`.
 
 Rules: never use `git` in `.jj` repo, never use editor-prompt commands, never use interactive `jj squash -i`.

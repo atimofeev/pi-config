@@ -1,5 +1,5 @@
 /**
- * pi-agents-slash — registers /agents slash command that lists all available
+ * pi-agents-slash — registers /list-agents slash command that lists all available
  * subagents (builtin, user, project) and chains.
  */
 
@@ -339,7 +339,7 @@ export default function register(pi: ExtensionAPI): void {
     cwd = ctx.cwd;
   });
 
-  pi.registerCommand("agents", {
+  pi.registerCommand("list-agents", {
     description: "List available agents (builtin, user, project)",
     handler: async (_args: string, ctx: ExtensionContext) => {
       try {

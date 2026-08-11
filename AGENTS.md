@@ -13,7 +13,7 @@ pi-config/
 ├── skills/                    # Shared procedural skills (committed)
 └── pi-agent/                  # Symlink target: ~/.pi/agent → here
     ├── agents/                # Subagent definitions (markdown + YAML frontmatter)
-    ├── extensions/            # TypeScript TUI extensions (/git-tag, /agents, codex bars)
+    ├── extensions/            # TypeScript TUI extensions (/git-tag, /list-agents, codex bars)
     ├── bin/                   # Shell scripts (yt-summarize)
     ├── pi-hermes-memory/      # Persistent memory (USER, MEMORY, failures, skills)
     ├── projects-memory/       # Per-project memory files
@@ -54,7 +54,7 @@ Subagents are defined as markdown files with YAML frontmatter in `pi-agent/agent
 
 ```markdown
 ---
-name: my-agent                 # Required. Agent name for delegation and /agents list
+name: my-agent                 # Required. Agent name for delegation and /list-agents list
 description: |                 # Optional. Shown in agent list. First line is headline.
   What this agent does.
   Can span multiple lines.
@@ -76,7 +76,7 @@ System prompt body. Markdown. Sent as the agent's system message.
 | Field | Required | Default | Notes |
 |-------|----------|---------|-------|
 | `name` | Yes | — | Single word, kebab-case. Unique within scope. |
-| `description` | No | — | Pipe-block for multi-line. Keep first line short (shown in `/agents`). |
+| `description` | No | — | Pipe-block for multi-line. Keep first line short (shown in `/list-agents`). |
 | `model` | No | parent model | Omit unless the task needs a deliberately different model. |
 | `tools` | No | none | Comma-separated. Available tools depend on loaded extensions. |
 | `thinking` | No | parent setting | `low` for simple agents, `medium`/`high` for complex. |
@@ -255,7 +255,7 @@ Per-project memory files. One `MEMORY.md` per project. Gitignored — personal s
 
 TUI extensions in TypeScript under `pi-agent/extensions/`:
 - `git-tag.ts` — `/git-tag` command: summarize commits, create tag, push
-- `slash-subagents-list.ts` — `/agents` command: list all available subagents
+- `slash-subagents-list.ts` — `/list-agents` command: list all available subagents
 - `pi-codex-bars.ts` — Codex usage widget (session/daily bars)
 
 Extensions load via `packages` in `settings.json`. Dependencies declared in `npm/package.json` (gitignored, installed by pi-agent at runtime).

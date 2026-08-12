@@ -5,11 +5,8 @@ pi-agent/npm/
 pi-agent/auth.json
 
 # Session data (conversation logs, run history)
-pi-agent/intercom/
-pi-agent/missions/
 pi-agent/run-history.jsonl
 pi-agent/sessions/
-pi-agent/web-run-sessions/
 
 # Memory databases (session history, personal notes)
 pi-agent/pi-hermes-memory/sessions.db
@@ -30,6 +27,3 @@ pi-agent/mcp-onboarding.json
 
 # Model discovery cache
 pi-agent/models-store.json
-
-# Subagent runtime state
-pi-agent/pi-subagents-state/

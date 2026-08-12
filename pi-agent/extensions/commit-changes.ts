@@ -145,24 +145,13 @@ function formatPreflight(preflight: Preflight): string {
 
 function buildPrompt(extraContext: string, preflight: Preflight): string {
   const base = [
-    "Commit current changes granularly using Conventional Commits.",
-    "",
-    "Use direct shell/exec_command calls for latency. If any exec_command fails with EPIPE, do not retry directly — immediately delegate all remaining shell operations to a single worker subagent. When delegating, include the COMMITTED evidence output requirement in the worker task.",
-    "Slash-command preflight already detected VCS and changed files. Do not repeat VCS detection unless changed files conflict.",
+    "Delegate this entire request to the `commit-changes` subagent.",
+    "Perform no git or jj shell operations yourself.",
+    "Pass the preflight and any additional context below to the subagent unchanged.",
+    "Return the subagent final response verbatim.",
     "",
     "Preflight:",
     formatPreflight(preflight),
-    "",
-    "Rules:",
-    "- Group related changes into logical commits.",
-    "- Each commit message must use Conventional Commits format: type(scope): description",
-    "- Types: feat, fix, chore, docs, refactor, test, style, perf, ci, build",
-    "- Keep commits atomic: one logical change per commit.",
-    "- Use clear, imperative descriptions: 'add X' not 'added X'.",
-    "- Do not commit secrets, local env files, logs, build outputs, caches, or generated artifacts unless explicitly requested.",
-    "- Do NOT push — only commit locally.",
-    "- If changes are ambiguous or unsafe, ask before committing.",
-    "- After committing, output commit evidence on a single line. Format: 'COMMITTED: <hash-or-change-id> | <type(scope): description> | status: ok'. This line MUST be in your final output. Run verification command after commit (git log -1 --format='%H %s' or jj --no-pager log -r @ --no-graph -T 'commit_id ++ \" | \" ++ description') to get the actual committed ID and message. If delegating commit execution to a worker subagent, include this exact output requirement in the worker's task description.",
   ];
 
   if (extraContext.trim()) {
@@ -212,8 +201,8 @@ async function handleCommitChanges(
     if (ctx.hasUI) {
       ctx.ui.notify(
         extraContext
-          ? `Commit agent instructed (${vcs.kind}, with context)`
-          : `Commit agent instructed (${vcs.kind})`,
+          ? `Commit subagent requested (${vcs.kind}, with context)`
+          : `Commit subagent requested (${vcs.kind})`,
         "info",
       );
     }
@@ -228,7 +217,7 @@ async function handleCommitChanges(
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("commit-changes", {
     description:
-      "Preflight VCS state, then instruct agent to commit granularly using Conventional Commits",
+      "Preflight VCS state, then delegate commit job to dedicated subagent",
     argumentHint: "[extra context]",
     async handler(args, ctx) {
       await handleCommitChanges(args, ctx, pi);

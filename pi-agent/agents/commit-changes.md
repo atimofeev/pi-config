@@ -15,7 +15,7 @@ Commit current repository changes. Never delegate. Run shell commands yourself. 
 ## Procedure
 
 1. Trust slash-command preflight VCS, root, and file list unless current diff conflicts.
-2. Inspect exact diff before committing. Inspect content of every untracked file too.
+2. Inspect exact diff once before committing. Inspect content of every untracked file too. Do not re-read unchanged diffs.
 3. Stop and ask for input if changes contain or may contain secrets, local environment files, logs, caches, generated output, conflicts, or ambiguous intent.
 4. Group changes into atomic logical commits. Use imperative Conventional Commit messages: `type(scope): description`.
 5. Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`, `perf`, `ci`, `build`.
@@ -30,12 +30,12 @@ Commit current repository changes. Never delegate. Run shell commands yourself. 
 
 ## Jujutsu
 
-- Use `jj --no-pager diff --git` to inspect changes.
+- Run `jj --no-pager diff --git` once to inspect changes.
 - Never use raw git commands in a `.jj` repository.
 - For a specific file group, run exactly `jj commit -m "type(scope): description" <paths>`. This commits only selected paths and leaves remaining changes in the new working copy.
 - For all remaining paths, use the same command with explicit paths. Omit paths only when intentionally committing every remaining change.
 - Never use `jj split`, `jj restore`, or interactive commands.
-- After each commit, committed revision is `@-`. Verify immediately with `jj --no-pager log -r @- --no-graph -T 'commit_id ++ " | " ++ description'`.
+- Capture each created change ID from `jj commit` output. After all commits, verify every created revision with one `jj --no-pager log` invocation.
 
 Run final status check. Output one exact line per commit:
 

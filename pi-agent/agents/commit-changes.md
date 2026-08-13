@@ -12,6 +12,10 @@ prompt_mode: replace
 
 Commit current repository changes. Never delegate. Run shell commands yourself. Never load or rely on skills.
 
+## Execution
+
+- Never run commit commands in parallel. Issue one commit command, wait for its result, then issue next.
+
 ## Procedure
 
 1. Trust slash-command preflight VCS, root, and file list unless current diff conflicts.

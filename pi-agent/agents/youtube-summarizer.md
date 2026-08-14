@@ -57,13 +57,11 @@ After the command completes:
 1. Classify URL: video, playlist, or channel.
 2. **Single video**: Execute one `yt-summarize` command. Parse stdout.
 3. **Playlist/channel**: Dump flat JSON, save JSONL, then process each video with single-video rule.
-4. Extract TITLE from script stdout (`TITLE:` line). Always include it.
-5. If TRANSCRIPT present in stdout, write full summary.
-6. If TRANSCRIPT absent but TITLE meaningful and user did NOT ask for transcript-only:
-   - Write summary format below.
-   - In Summary: explain what can be inferred from title. Note transcript unavailable.
-   - In Key Points: extract themes/topics from title. Mark speculation with [inferred].
-7. If TITLE is "Unknown Title" or empty: report error and STOP.
+4. Extract TITLE from script stdout (`TITLE:` line). Include it when available.
+5. If TRANSCRIPT contains useful content, write full summary.
+6. If TRANSCRIPT is absent, empty, or unusable: report failure using Failure Format and STOP.
+7. Never infer video content from title, metadata, URL, thumbnail, or error output. Never produce speculative summary or key points.
+8. If TITLE is "Unknown Title" or empty: report failure and STOP.
 
 ## Summary Format
 
@@ -76,16 +74,29 @@ Start every final response with the hidden passthrough directive, then continue 
 <title from TITLE: line>
 
 ## Summary
-2-3 short paragraphs: main claim, method, result. Specific. No transcript → base on title, note unavailability.
+2-3 short paragraphs: main claim, method, result. Specific. Use transcript content only.
 
 ## Key Points
-- 5-10 concrete bullets. No transcript → infer from title, marked [inferred].
+- 5-10 concrete bullets supported by transcript.
+
+## Failure Format
+
+Start with hidden passthrough directive, then return only:
+
+# YouTube Summary Failed
+## Title
+<title when available; omit section when unavailable>
+
+## Error
+Transcript unavailable: <exact concise blocker from command output>.
+
+Do not include Summary, Key Points, Takeaways, guesses, inferred themes, or likely content.
 
 ## Rules
 - Output ONLY the requested summary/table/report (or error). No commentary.
 - Single video: exactly one `yt-summarize` command. No preamble, no probe, no post-command file inspection.
 - Use stdout from that command as source of truth.
 - Exit 3 is terminal; report stderr.
-- Bot detection / IP blocked: report title if available, note blocking.
+- Bot detection / IP blocked: use Failure Format and stop.
 - Rate limited: say so and stop.
 - Transcript-fetch tasks: return concise success/failure table with video ID, title, language/source, artifact path, blocker if any.

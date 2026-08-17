@@ -10,7 +10,7 @@ metadata:
   role: engineer
   scope: implementation
   output-format: code
-  related-skills: terraform-engineer, kubernetes-specialist, sre-engineer, monitoring-expert, security-reviewer
+  related-skills: terraform-skill, kubernetes-specialist, sre-engineer, monitoring-expert, security-reviewer
 ---
 
 # DevOps Engineer

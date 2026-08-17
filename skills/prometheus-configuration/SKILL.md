@@ -59,6 +59,4 @@ curl 'http://localhost:9090/api/v1/query?query=up'
 
 ## Related Skills
 
-- `grafana-dashboards` - For visualization
-- `slo-implementation` - For SLO monitoring
-- `distributed-tracing` - For request tracing
+- `dashboarding` - For visualization

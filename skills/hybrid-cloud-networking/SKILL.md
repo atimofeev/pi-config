@@ -252,5 +252,4 @@ oci network cpe list
 
 ## Related Skills
 
-- `multi-cloud-architecture` - For architecture decisions
-- `terraform-module-library` - For IaC implementation
+- `terraform-skill` - For IaC implementation

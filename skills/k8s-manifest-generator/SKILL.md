@@ -73,5 +73,5 @@ After creating manifests:
 ## Related Skills
 
 - `helm-chart-scaffolding` - For templating and packaging
-- `gitops-workflow` - For automated deployments
+- `argocd-expert` - For automated deployments
 - `k8s-security-policies` - For advanced security configurations

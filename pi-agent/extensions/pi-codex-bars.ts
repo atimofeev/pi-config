@@ -9,7 +9,7 @@
  *   /codex — detail overlay with full-width bars
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   Container,
   Text,
@@ -17,7 +17,7 @@ import {
   visibleWidth,
   type Component,
   type Focusable,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";

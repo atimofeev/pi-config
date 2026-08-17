@@ -1,6 +1,6 @@
 {
-  "defaultModel": "gpt-5.6-sol",
-  "defaultProvider": "openai-codex",
+  "defaultModel": "mimo-v2.5",
+  "defaultProvider": "opencode-go",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "deepseek/deepseek-v4-pro",

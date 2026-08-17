@@ -79,42 +79,45 @@ function readJjBookmark(root: string): string | null {
       .filter(Boolean) ?? [];
 
     if (names.length === 0) continue;
-    return names.map((name) => (distance === 0 ? name : `${name}↑ ${distance}`)).join(",");
+    return names.map((name) => (distance === 0 ? name : `${name}⇡${distance}`)).join(",");
   }
 
   return null;
 }
 
-function replaceBranch(line: string, branch: string): string {
-  const start = line.lastIndexOf("(");
-  const end = start >= 0 ? line.indexOf(")", start) : -1;
-  if (start >= 0 && end > start) {
-    return `${line.slice(0, start)}(${branch})${line.slice(end + 1)}`;
-  }
+// FooterDataProvider is not exported, but the runtime keeps one instance and
+// hands it to every custom footer (pi-go-bars, pi-codex-bars, ...). Reach it
+// through a FooterComponent instance and patch getGitBranch on its prototype,
+// so all footers show the jj bookmark instead of git's "(detached)".
+function patchFooterData(instance: any): void {
+  const proto = instance?.footerData?.constructor?.prototype;
+  if (!proto || typeof proto.getGitBranch !== "function" || proto.__jjPatched) return;
 
-  return `${line} (${branch})`;
+  const orig = proto.getGitBranch;
+  proto.getGitBranch = function () {
+    const jj = resolveJjBookmark(this?.cwd);
+    if (jj) return jj;
+    return orig.call(this);
+  };
+  proto.__jjPatched = true;
 }
 
-function patchFooterLines(lines: string[], cwd: string | undefined): string[] {
-  const branch = resolveJjBookmark(cwd);
-  if (!branch || lines.length === 0) return lines;
-  return [replaceBranch(lines[0], branch), ...lines.slice(1)];
-}
-
-function patchBuiltInFooter(): void {
+function patchFooterComponent(): void {
   const proto = FooterComponent.prototype as any;
   if (proto.__jjFooterPatched) return;
 
-  const originalRender = proto.render;
-  proto.render = function renderWithJjBranch(width: number) {
-    const lines = originalRender.call(this, width);
-    const cwd = this?.session?.sessionManager?.getCwd?.();
-    return patchFooterLines(lines, cwd);
-  };
+  for (const method of ["setSession", "setAutoCompactEnabled", "invalidate", "render"] as const) {
+    const original = proto[method];
+    if (typeof original !== "function") continue;
+    proto[method] = function (...args: unknown[]) {
+      patchFooterData(this);
+      return original.apply(this, args);
+    };
+  }
 
   proto.__jjFooterPatched = true;
 }
 
-patchBuiltInFooter();
+patchFooterComponent();
 
 export default function () {}

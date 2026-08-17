@@ -223,4 +223,12 @@ export default function (pi: ExtensionAPI) {
       await handleCommitChanges(args, ctx, pi);
     },
   });
+
+  pi.registerCommand("ci", {
+    description: "Alias for /commit-changes",
+    argumentHint: "[extra context]",
+    async handler(args, ctx) {
+      await handleCommitChanges(args, ctx, pi);
+    },
+  });
 }

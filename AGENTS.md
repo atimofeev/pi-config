@@ -94,7 +94,7 @@ Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0
 **Model choice:**
 - Parent default is `openai-codex/gpt-5.6-sol` (`settings.json` `defaultModel`/`defaultProvider`).
 - Focused custom subagents pin `deepseek/deepseek-v4-flash` in frontmatter `model:`.
-- Embedded overrides: `general-purpose` and `Plan` pin `deepseek/deepseek-v4-pro`; `Explore` pins `deepseek/deepseek-v4-flash`.
+- Embedded overrides: `general-purpose` and `Plan` pin `opencode-go/glm-5.3`; `Explore` pins `deepseek/deepseek-v4-flash`.
 
 **Context mode:**
 - Fresh by default (target default). `inherit_context: true` only when the agent needs parent conversation history.
@@ -292,7 +292,7 @@ Changes take effect immediately — pi-agent re-reads agent files on each delega
 - **No Nix flake or package.nix** here. pi-agent itself is installed via home-manager in `nixos-config` repo.
 - **Caveman mode is enforced** — SYSTEM.md sets response style. Agents should match: terse, technical, no fluff.
 - **User is DevOps/infra engineer** managing prod k8s, ClickHouse, Kafka. Works in Russian with colleagues.
-- **Model default is `openai-codex/gpt-5.6-sol`** (`settings.json`); `general-purpose` and `Plan` overrides pin `deepseek/deepseek-v4-pro`; focused custom agents and `Explore` pin `deepseek/deepseek-v4-flash`.
+- **Model default is `openai-codex/gpt-5.6-sol`** (`settings.json`); `general-purpose` and `Plan` overrides pin `opencode-go/glm-5.3`; focused custom agents and `Explore` pin `deepseek/deepseek-v4-flash`.
 - **NixOS host.** Missing tools → `nix run nixpkgs#app -- <args>`.
 
 ## Related repositories

@@ -13,7 +13,7 @@ pi-config/
 ├── skills/                    # Shared procedural skills (committed)
 └── pi-agent/                  # Symlink target: ~/.pi/agent → here
     ├── agents/                # Subagent definitions (markdown + YAML frontmatter)
-    ├── extensions/            # TypeScript TUI extensions (/git-tag, codex bars)
+    ├── extensions/            # TypeScript TUI extensions (/git-tag, codex bars, commit-changes, jj-footer, theme-overrides)
     ├── bin/                   # Shell scripts (yt-summarize)
     ├── pi-hermes-memory/      # Persistent memory (USER, MEMORY, failures, skills)
     ├── projects-memory/       # Per-project memory files
@@ -92,9 +92,9 @@ Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0
 ### Conventions for this repo
 
 **Model choice:**
-- Parent default is `openai-codex/gpt-5.6-sol` (`settings.json` `defaultModel`/`defaultProvider`).
+- Parent default is whatever `settings.json` `defaultModel`/`defaultProvider` specifies. Changes often — don't hardcode here.
 - Focused custom subagents pin `deepseek/deepseek-v4-flash` in frontmatter `model:`.
-- Embedded overrides: `general-purpose` and `Plan` pin `opencode-go/glm-5.3`; `Explore` pins `deepseek/deepseek-v4-flash`.
+- Embedded overrides (`general-purpose`, `Plan`, `Explore`) pin their own models in frontmatter.
 
 **Context mode:**
 - Fresh by default (target default). `inherit_context: true` only when the agent needs parent conversation history.
@@ -105,11 +105,12 @@ Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0
 
 **Tool grants:**
 - Grant only what the agent actually calls. No kitchen-sink grants.
-- `bash` — for running commands (test-runner, bandcamp-downloader, youtube-summarizer).
-- `read` — for reading files (test-runner).
-- `ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search` — web access (web-fetcher).
-- `ext:context7/*, ext:rpiv-web-tools/*, ext:pi-mcp-adapter/mcp` — docs (docs-analyzer).
-- `tools: none` — pure prompt tasks with no tools (terraform-diff-analyzer).
+Grant only what the agent actually calls. No kitchen-sink grants. Examples:
+- `bash` — running commands.
+- `read` — reading files.
+- `ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search` — web access.
+- `ext:context7/*, ext:rpiv-web-tools/*, ext:pi-mcp-adapter/mcp` — docs.
+- `tools: none` — pure prompt tasks with no tools.
 
 **Prompt mode:**
 - `replace` default — custom subagents get full system prompt control. No builtin prompt pollution.
@@ -151,7 +152,7 @@ Do NOT create an agent when:
 Only execute when the user explicitly asks to create an agent.
 
 1. Identify the task pattern and its constraints.
-2. Choose model: pin `deepseek/deepseek-v4-flash` for cheap I/O-bound tasks; omit `model:` to inherit the parent model (`openai-codex/gpt-5.6-sol`) for heavy reasoning.
+2. Choose model: pin `deepseek/deepseek-v4-flash` for cheap I/O-bound tasks; omit `model:` to inherit the parent model for heavy reasoning.
 3. Choose tools: grant exactly what the task calls. Check available tool names.
 4. Write a tight system prompt: goal, steps, output format, rules, stop conditions.
 5. Add frontmatter following conventions above.
@@ -204,16 +205,15 @@ MCP server connections. Currently:
 - `kubernetes` — `mcp-server-kubernetes` via npx, common kubeconfig `~/.kube/config`, context `mcp-none` (no single-context filtering)
 - `nixos` — package/option search (Docker)
 - `terraform` — module/provider registry (Docker)
+- `aws-docs` — AWS documentation search (Docker)
+- `github` — GitHub MCP (HTTP, copilot)
+- `sidero-docs` — Sidero Labs docs (HTTP)
 
 To add a new MCP server, add to `servers` object with `command`, `args`, and optional `env`.
 
 ### models.json
 
-Custom model definitions. Currently:
-- `ollama/gemma4-tool` — Gemma 4 8B, 128K context
-- `ollama/qwen3.6:27b` — Qwen 3.6 27B, 128K context
-
-Add new providers/models here. The `provider` field in settings.json must match a provider defined here or a builtin provider.
+Custom model definitions for local providers (e.g. ollama). Add new providers/models here. The `provider` field in settings.json must match a provider defined here or a builtin provider.
 
 ### caveman.json
 
@@ -251,8 +251,13 @@ Per-project memory files. One `MEMORY.md` per project. Gitignored — personal s
 TUI extensions in TypeScript under `pi-agent/extensions/`:
 - `git-tag.ts` — `/git-tag` command: summarize commits, create tag, push
 - `pi-codex-bars.ts` — Codex usage widget (session/daily bars)
+- `commit-changes.ts` — `/commit-changes` command: atomic conventional commits (git + jj)
+- `jj-footer.ts` — Footer patch showing jj bookmark instead of git detached HEAD
+- `theme-overrides.ts` — Applies `themeOverrides` from settings.json at session start
 
 The `/agents` subagent management command ships with the `@tintinweb/pi-subagents` package — no local extension.
+
+All extensions import from `@earendil-works/pi-coding-agent` (formerly `@mariozechner/pi-coding-agent`).
 
 ## Shell scripts
 
@@ -292,7 +297,7 @@ Changes take effect immediately — pi-agent re-reads agent files on each delega
 - **No Nix flake or package.nix** here. pi-agent itself is installed via home-manager in `nixos-config` repo.
 - **Caveman mode is enforced** — SYSTEM.md sets response style. Agents should match: terse, technical, no fluff.
 - **User is DevOps/infra engineer** managing prod k8s, ClickHouse, Kafka. Works in Russian with colleagues.
-- **Model default is `openai-codex/gpt-5.6-sol`** (`settings.json`); `general-purpose` and `Plan` overrides pin `opencode-go/glm-5.3`; focused custom agents and `Explore` pin `deepseek/deepseek-v4-flash`.
+- **Model default is in `settings.json`** (`defaultModel`/`defaultProvider`). Custom agents pin models in frontmatter — check agent files for current values.
 - **NixOS host.** Missing tools → `nix run nixpkgs#app -- <args>`.
 
 ## Related repositories

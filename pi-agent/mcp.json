@@ -3,57 +3,11 @@
     "mcpFooterStatus": "off"
   },
   "mcpServers": {
-    "kubernetes": {
-      "command": "npx",
-      "args": ["mcp-server-kubernetes"],
-      "directTools": false,
-      "env": {
-        "K8S_CONTEXT": "mcp-none",
-        "KUBECONFIG_PATH": "/home/atimofeev/.kube/config"
-      }
+    "aws-docs": {
+      "directTools": true
     },
     "nixos": {
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "ghcr.io/utensils/mcp-nixos:2.4.1"
-      ],
-      "command": "docker",
       "directTools": true
-    },
-    "terraform": {
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "hashicorp/terraform-mcp-server:0.5.1"
-      ],
-      "command": "docker",
-      "directTools": false
-    },
-    "aws-docs": {
-      "args": [
-        "run",
-        "--interactive",
-        "--rm",
-        "--env",
-        "AWS_DOCUMENTATION_PARTITION=aws",
-        "mcp/aws-documentation:latest"
-      ],
-      "command": "docker",
-      "type": "stdio",
-      "directTools": true
-    },
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "directTools": false
-    },
-    "sidero-docs": {
-      "type": "http",
-      "url": "https://docs.siderolabs.com/mcp",
-      "directTools": false
     }
   }
 }

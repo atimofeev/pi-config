@@ -70,19 +70,28 @@ System prompt body. Markdown. Sent as the agent's system message (prompt_mode: r
 
 ### Frontmatter field reference
 
-Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0.14.x:
+Filename supplies the default agent name; `name` overrides it. Field defaults for `@tintinweb/pi-subagents` v0.17.x:
 
 | Field | Default | Notes |
 |-------|---------|-------|
 | `description` | filename | Shown in agent list. First line is headline. |
+| `name` | filename | Agent type used by `subagent_type` and handles. |
 | `display_name` | — | UI display name |
-| `tools` | all built-ins | Built-in names (`read, bash, edit, write, grep, find, ls`), `*`/`all`, `none`, and `ext:<ext>/<tool>` selectors |
+| `color` | — | Optional agent badge color. |
+| `tools` | all 7 built-ins | Built-in names (`read, bash, edit, write, grep, find, ls`), `*`/`all`, `none`, and `ext:<ext>/<tool>` selectors |
 | `extensions` | `true` | Which extensions load: `true` (all), `false` (none), or comma-separated names |
 | `exclude_extensions` | — | Denylist applied after `extensions` |
 | `skills` | `true` | Inherit parent skills: `true`, `false`, or comma-separated names |
+| `memory` | — | Persistent memory scope: `project`, `local`, or `user`. |
+| `disallowed_tools` | — | Tools denied after other tool selection. |
+| `isolation` | — | `worktree` for isolated checkout; `off` to refuse worktree isolation. |
 | `model` | parent model | Omit to inherit. Custom agents pin `deepseek/deepseek-v4-flash`. |
 | `thinking` | parent setting | `off, minimal, low, medium, high, xhigh, max` |
 | `max_turns` | unlimited | Max agentic turns; `0` = unlimited |
+| `persist_session` | `rememberAgents` | Persist as normal pi session; per-agent override. |
+| `output_transcript` | `outputTranscript` | Write `.output` transcript; per-agent override. |
+| `session_dir` | pi default | Session directory when persistence is enabled. |
+| `allowed_subagents` | none | Opt in to specific nested subagents or `all`. |
 | `prompt_mode` | `replace` | `replace` = body is full system prompt; `append` = appended to parent prompt |
 | `inherit_context` | `false` | Fork parent conversation into agent |
 | `run_in_background` | `false` | Run in background by default |
@@ -105,7 +114,7 @@ Filename becomes the agent name. Field defaults for `@tintinweb/pi-subagents` v0
 
 **Tool grants:**
 - Grant only what the agent actually calls. No kitchen-sink grants.
-Grant only what the agent actually calls. No kitchen-sink grants. Examples:
+Examples:
 - `bash` — running commands.
 - `read` — reading files.
 - `ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search` — web access.
@@ -119,7 +128,7 @@ Grant only what the agent actually calls. No kitchen-sink grants. Examples:
 - `extensions: false` + `skills: false` for pure built-in tasks. Web/docs agents list their extensions explicitly.
 
 **Nesting:**
-- Custom agents never spawn subagents. Target v0.14.x has no nested subagents (`allowed_subagents` unsupported).
+- Custom agents in this repo never spawn subagents. v0.17 supports opt-in `allowed_subagents`; intentionally unused here.
 
 ### Discovery and scope precedence
 
@@ -193,11 +202,12 @@ Central runtime config. Edit here for persistent changes:
 Current global:
 ```json
 {
+  "rememberAgents": false,
   "outputTranscript": false
 }
 ```
 
-No per-subagent transcript files. Other settings (max concurrency, default max turns, grace turns, default join mode, disable defaults, widget mode, scheduling, tool description mode) via `/agents` → Settings or subagents.json.
+`outputTranscript: false` disables per-subagent `.output` files. `rememberAgents: false` keeps subagent sessions in memory instead of adding them to pi session storage. Per-agent `output_transcript` and `persist_session` override these defaults. Other settings (max concurrency, default max turns, grace turns, nested depth, default join mode, disable defaults, widget mode, scheduling, tool description mode) via `/agents` → Settings or subagents.json.
 
 ### mcp.json
 

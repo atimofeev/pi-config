@@ -4,7 +4,7 @@ display_name: Plan
 tools: read, bash, grep, find, ls
 extensions: true
 skills: true
-model: opencode-go/glm-5.3
+model: opencode-go/deepseek-v4-pro
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

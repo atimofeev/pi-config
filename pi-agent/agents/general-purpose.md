@@ -3,6 +3,6 @@ description: General-purpose agent for researching complex questions, searching 
 display_name: Agent
 extensions: true
 skills: true
-model: opencode-go/glm-5.3
+model: opencode-go/deepseek-v4-pro
 prompt_mode: append
 ---

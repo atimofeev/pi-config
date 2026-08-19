@@ -7,7 +7,6 @@
  *   /git-tag 0.4.0        specify version explicitly
  */
 
-import { complete } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader, DynamicBorder, getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, matchesKey, Text } from "@earendil-works/pi-tui";
@@ -83,18 +82,12 @@ export default function (pi: ExtensionAPI) {
       let action: "accept" | "deny" | "retry" | "edit_version" | "edit_msg" = "retry";
 
       const generate = async (): Promise<string | null> => {
-        const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model!);
-        if (!auth.ok || !auth.apiKey) {
-          ctx.ui.notify(auth.error ?? "No API key", "error");
-          return null;
-        }
-
         const prompt = [
           "Generate a tag message for:",
           rawCommits,
         ].join("\n");
 
-        const response = await complete(
+        const response = await ctx.modelRegistry.complete(
           ctx.model!,
           {
             systemPrompt: SYSTEM_PROMPT,
@@ -106,7 +99,6 @@ export default function (pi: ExtensionAPI) {
               },
             ],
           },
-          { apiKey: auth.apiKey, headers: auth.headers },
         );
 
         if (response.stopReason === "aborted") return null;

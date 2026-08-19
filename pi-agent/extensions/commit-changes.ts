@@ -162,11 +162,14 @@ function buildPrompt(extraContext: string, preflight: Preflight): string {
 }
 
 function sendVisibleMessage(pi: ExtensionAPI, content: string): void {
-  (pi as any).sendMessage?.({
-    customType: "commit-changes",
-    content,
-    display: true,
-  });
+  pi.sendMessage(
+    {
+      customType: "commit-changes",
+      content,
+      display: true,
+    },
+    { triggerTurn: false },
+  );
 }
 
 async function handleCommitChanges(

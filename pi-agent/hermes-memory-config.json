@@ -1,4 +1,7 @@
 {
+  "memoryCharLimit": 10000,
+  "userCharLimit": 10000,
+  "projectCharLimit": 10000,
   "consolidationTimeoutMs": 600000,
   "llmModelOverride": "deepseek/deepseek-v4-flash",
   "llmThinkingOverride": "low"

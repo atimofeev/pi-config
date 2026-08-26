@@ -4,6 +4,7 @@ display_name: Plan
 tools: read, bash, grep, find, ls
 extensions: true
 skills: true
+disallowed_tools: notebook
 model: opencode-go/deepseek-v4-pro
 prompt_mode: replace
 ---

@@ -1,317 +1,155 @@
 # AGENTS.md — pi-config
 
-Pi coding agent configuration repository. Defines subagents, extensions, MCP servers, skills, memory stores, and runtime settings. `~/.pi/agent` symlinks to `pi-agent/`; `~/.agents/skills` symlinks to `skills/` — edits take effect immediately.
+## Purpose
+
+Repository for Pi coding-agent configuration. It contains global instructions, subagent definitions, local extensions, skills, tool configuration, runtime settings, and bootstrap links.
+
+Most deployed paths are symlinks into this repository, so edits may affect live Pi sessions immediately. `justfile` is the source of truth for link targets.
 
 ## Repository structure
 
 ```
-pi-config/
-├── AGENTS.md                  # This file — agent instructions for the repo
-├── README.md                  # Human overview and bootstrap guide
-├── justfile                   # Bootstrap/link tasks
-├── .gitignore                 # Excludes auth, sessions, memory DBs, caches
-├── skills/                    # Shared procedural skills (committed)
-└── pi-agent/                  # Symlink target: ~/.pi/agent → here
-    ├── agents/                # Subagent definitions (markdown + YAML frontmatter)
-    ├── extensions/            # TypeScript TUI extensions (/git-tag, codex bars, commit-changes, jj-footer, theme-overrides)
-    ├── bin/                   # Shell scripts (yt-summarize)
-    ├── pi-hermes-memory/      # Persistent memory (USER, MEMORY, failures, skills)
-    ├── projects-memory/       # Per-project memory files
-    ├── npm/                   # Node dependencies (gitignored — installed by pi-agent)
-    ├── SYSTEM.md              # Response style, environment, delegation policy
-    ├── settings.json          # Model, provider, theme, packages
-    ├── subagents.json         # @tintinweb/pi-subagents global runtime defaults
-    ├── models.json            # Custom model definitions (ollama local models)
-    ├── mcp.json               # MCP server connections (kubernetes, nixos, terraform)
-    ├── caveman.json           # Response style config
-    ├── auth.json              # API keys + OAuth tokens (gitignored, SENSITIVE)
-    └── pi-codex-conversion.json
+AGENTS.md                 # repository-specific instructions
+README.md                 # human overview and bootstrap guide
+justfile                  # deployment/link tasks
+*.json                    # top-level extension configuration
+skills/                   # committed shared skills
+pi-agent/
+  agents/                 # subagent definitions (*.md)
+  extensions/             # local TypeScript extensions (*.ts)
+  bin/                    # helper executables
+  pi-hermes-memory/       # memory extension state and committed skills
+  projects-memory/        # ignored per-project state
+  SYSTEM.md               # global runtime instructions
+  settings.json           # primary Pi runtime settings
+  subagents.json          # subagent runtime defaults
+  models.json             # custom model definitions
+  mcp.json                # MCP adapter settings and server overrides
+  caveman.json            # response-style configuration
+  auth.json               # ignored credentials; sensitive
 ```
 
-## Core concepts
+Use directory patterns and configuration files to discover current contents. Do not maintain inventories of agents, extensions, models, servers, commands, or link targets in this document.
 
-### Symlink deployment
+## Deployment
 
-`just install` creates two symlinks: `~/.pi/agent → pi-agent/` and `~/.agents/skills → skills/`. No file copies, no npm install, no systemd. The pi-coding-agent runtime reads from `~/.pi/agent/`. Editing files here (via symlink) changes runtime behavior immediately.
+- `just install` runs link tasks declared in `justfile`.
+- `_link` backs up conflicting targets with a timestamp and skips correct symlinks.
+- Deployment links files; it does not install Pi, packages, or system services.
+- Runtime reload behavior varies by file. Agent definitions are discovered during delegation; startup settings generally require restart or reload.
+- Use `just --list` for current deployment tasks instead of copying their inventory into prose.
 
-Existing targets are backed up to `<target>.backup.<timestamp>` before linking.
+## Edit boundaries
 
-### What's NOT tracked
+- Minimum scoped diff. Touch only files required by the task.
+- Reuse existing definitions and extension patterns before adding new ones.
+- Do not add abstractions, packages, agents, or config layers speculatively.
+- Comments only for non-obvious behavior.
+- `.gitignore` is the source of truth for sensitive and generated state.
+- Do not edit ignored credentials, sessions, caches, memory databases, discovered-model state, installed packages, or per-project memory unless the task explicitly targets that state.
+- Never read credentials into context except for an explicitly authorized auth-debug task. Never commit or share them.
 
-Sensitive or generated files excluded via `.gitignore`:
-- `auth.json` — API keys and OAuth tokens
-- `sessions/`, `run-history.jsonl` — full conversation logs
-- `pi-hermes-memory/sessions.db*` — SQLite session database
-- `pi-hermes-memory/{USER,MEMORY,failures}.md` — personal/system memory
-- `mcp-cache.json`, `mcp-npx-cache.json` — tool caches
-- `projects-memory/` — per-project session memory
-- `npm/` — node_modules installed by pi-agent at runtime
+## Sources of truth
+
+| Concern | Source |
+| --- | --- |
+| Deployment links | `justfile` |
+| Default provider/model, allowlist, theme, packages | `pi-agent/settings.json` |
+| Custom model definitions | `pi-agent/models.json` |
+| Agent inventory and per-agent model/tool policy | `pi-agent/agents/*.md` frontmatter |
+| Global subagent defaults | `pi-agent/subagents.json` |
+| MCP settings and server overrides | `pi-agent/mcp.json` |
+| Local extension inventory and commands | `pi-agent/extensions/*.ts` |
+| Global response and delegation policy | `pi-agent/SYSTEM.md` |
+| Helper behavior and exit status | executable under `pi-agent/bin/` |
+
+Current values belong in these files, not in `AGENTS.md`.
 
 ## Subagent definitions
 
-### File format
-
-Subagents are defined as markdown files with YAML frontmatter in `pi-agent/agents/`. Each file produces one executable agent discovered automatically.
+Subagents are markdown files with YAML frontmatter under `pi-agent/agents/`. Filename supplies default agent name. Body is agent system prompt.
 
 ```markdown
 ---
-description: |                 # Optional. Shown in agent list. First line is headline.
-  What this agent does.
-  Can span multiple lines.
-tools: bash, read              # Built-in tools; `ext:<ext>/<tool>` for extension tools
-                               # `none` = no tools, omit = all built-ins
-extensions: false              # Which extensions load: true (all), false (none), or list
-skills: false                  # Inherit parent skills: true, false, or comma-separated names
-model: deepseek/deepseek-v4-flash  # Optional. Omit to inherit parent model.
-thinking: low                  # Thinking level: off, low, medium, high, xhigh
+description: Short capability summary
+tools: bash, read
+extensions: false
+skills: false
+thinking: low
 ---
-System prompt body. Markdown. Sent as the agent's system message (prompt_mode: replace default).
+Task-specific system prompt.
 ```
 
-### Frontmatter field reference
-
-Filename supplies the default agent name; `name` overrides it. Field defaults for `@tintinweb/pi-subagents` v0.17.x:
-
-| Field | Default | Notes |
-|-------|---------|-------|
-| `description` | filename | Shown in agent list. First line is headline. |
-| `name` | filename | Agent type used by `subagent_type` and handles. |
-| `display_name` | — | UI display name |
-| `color` | — | Optional agent badge color. |
-| `tools` | all 7 built-ins | Built-in names (`read, bash, edit, write, grep, find, ls`), `*`/`all`, `none`, and `ext:<ext>/<tool>` selectors |
-| `extensions` | `true` | Which extensions load: `true` (all), `false` (none), or comma-separated names |
-| `exclude_extensions` | — | Denylist applied after `extensions` |
-| `skills` | `true` | Inherit parent skills: `true`, `false`, or comma-separated names |
-| `memory` | — | Persistent memory scope: `project`, `local`, or `user`. |
-| `disallowed_tools` | — | Tools denied after other tool selection. |
-| `isolation` | — | `worktree` for isolated checkout; `off` to refuse worktree isolation. |
-| `model` | parent model | Omit to inherit. Custom agents pin `deepseek/deepseek-v4-flash`. |
-| `thinking` | parent setting | `off, minimal, low, medium, high, xhigh, max` |
-| `max_turns` | unlimited | Max agentic turns; `0` = unlimited |
-| `persist_session` | `rememberAgents` | Persist as normal pi session; per-agent override. |
-| `output_transcript` | `outputTranscript` | Write `.output` transcript; per-agent override. |
-| `session_dir` | pi default | Session directory when persistence is enabled. |
-| `allowed_subagents` | none | Opt in to specific nested subagents or `all`. |
-| `prompt_mode` | `replace` | `replace` = body is full system prompt; `append` = appended to parent prompt |
-| `inherit_context` | `false` | Fork parent conversation into agent |
-| `run_in_background` | `false` | Run in background by default |
-| `isolated` | `false` | Built-in tools only; no extensions/skills/context |
-| `enabled` | `true` | `false` hides the agent |
-
-### Conventions for this repo
-
-**Model choice:**
-- Parent default is whatever `settings.json` `defaultModel`/`defaultProvider` specifies. Changes often — don't hardcode here.
-- Focused custom subagents pin `deepseek/deepseek-v4-flash` in frontmatter `model:`.
-- Embedded overrides (`general-purpose`, `Plan`, `Explore`) pin their own models in frontmatter.
-
-**Context mode:**
-- Fresh by default (target default). `inherit_context: true` only when the agent needs parent conversation history.
-
-**Thinking level:**
-- `low` — docs-analyzer and web-fetcher.
-- Not set (inherit) — bandcamp-downloader, terraform-diff-analyzer, test-runner, and youtube-summarizer.
-
-**Tool grants:**
-- Grant only what the agent actually calls. No kitchen-sink grants.
-Examples:
-- `bash` — running commands.
-- `read` — reading files.
-- `ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search` — web access.
-- `ext:context7/*, ext:rpiv-web-tools/*, ext:pi-mcp-adapter/mcp` — docs.
-- `tools: none` — pure prompt tasks with no tools.
-
-**Prompt mode:**
-- `replace` default — custom subagents get full system prompt control. No builtin prompt pollution.
-
-**Inheritance:**
-- `extensions: false` + `skills: false` for pure built-in tasks. Web/docs agents list their extensions explicitly.
-
-**Nesting:**
-- Custom agents in this repo never spawn subagents. v0.17 supports opt-in `allowed_subagents`; intentionally unused here.
-
-### Discovery and scope precedence
-
-Agent files are discovered from (higher priority wins):
-1. `<cwd>/.pi/agents/**/*.md` — project scope (authoritative)
-2. `<cwd>/.agents/agents/**/*.md` — shared workspace (read-only)
-3. `~/.pi/agent/agents/**/*.md` — global scope (this repo)
-4. Embedded defaults (`general-purpose`, `Explore`, `Plan`) — lowest priority
-
-Same name in higher scope overrides lower. `/agents` command (from `@tintinweb/pi-subagents`) lists and manages all.
-
-## When to create a new agent
-
-**HARD RULE: Never create subagents autonomously.** The pi-agent must not create, modify, or delete subagent definitions on its own initiative. Agent creation is a deliberate human decision, not an automated optimization. If a new agent seems warranted, ask the user explicitly — do not propose, do not draft, do not create.
-
-When explicitly asked by the user, create a new agent when:
-- A task pattern repeats across sessions (bandcamp downloads, test runs, diff analysis)
-- The task needs a different model, context mode, or tool set than builtins
-- The task requires a tightly scoped system prompt that prevents parent-model drift
-- The task is I/O bound (fetch, download, parse) and doesn't need parent reasoning
-
-Do NOT create an agent when:
-- It's a one-off task
-- A builtin agent handles it (general-purpose, Explore, Plan)
-- The parent model can do it directly without special constraints
-- User hasn't explicitly requested it
-
-### Agent creation workflow (user-requested only)
-
-Only execute when the user explicitly asks to create an agent.
+Supported fields, defaults, discovery precedence, and selectors depend on installed subagent package version. Check installed package documentation, runtime tool schema, and existing agent files before editing; do not copy a version-specific field table here.
 
-1. Identify the task pattern and its constraints.
-2. Choose model: pin `deepseek/deepseek-v4-flash` for cheap I/O-bound tasks; omit `model:` to inherit the parent model for heavy reasoning.
-3. Choose tools: grant exactly what the task calls. Check available tool names.
-4. Write a tight system prompt: goal, steps, output format, rules, stop conditions.
-5. Add frontmatter following conventions above.
-6. Save to `pi-agent/agents/<name>.md`.
-7. Test: delegate to the new agent with a sample task.
-8. Commit.
+### Conventions
 
-### Agent system prompt guidelines
+- Fresh context by default. Set context inheritance only when parent conversation is required.
+- Grant only tools and extensions agent calls.
+- Use full prompt replacement for focused agents unless parent instructions are intentionally needed.
+- Omit model pin to inherit parent. Pin only when task requires a stable model class; inspect frontmatter for current route values.
+- Keep skills and extensions disabled unless agent uses them.
+- Do not enable nested subagents without an explicit requirement.
+- Verify effective inventory and scope through runtime agent tooling rather than duplicating precedence rules here.
 
-Effective agent system prompts are:
-- **Procedural, not conversational.** "Run this command. Extract X. Output Y. Stop." Not "You are a helpful assistant..."
-- **Self-contained.** Agent doesn't know about parent conversation. Include all needed instructions.
-- **Output format explicit.** Show the exact structure, not "summarize however you want."
-- **Stop rules explicit.** "Never retry." "If X, output Y and stop." "One command only."
-- **Error handling explicit.** "If exit code > 0, report the error and stop." "If URL not found, output ERROR: ..."
-- **Short.** Most agents fit in 20-40 lines of system prompt. If growing past 60 lines, split into two agents or use a skill.
+## Agent-definition hard rule
 
-Anti-patterns to avoid:
-- "You are an expert..." — don't fluff. State what the agent does.
-- "Feel free to..." — agents don't have feelings. State rules.
-- "You might want to..." — no hedging. State what to do.
-- "If you're unsure, ask..." — agents shouldn't ask. They should stop with an error code.
+**Never create, modify, or delete subagent definitions autonomously.** Agent-definition changes require explicit user request. If new agent seems useful, ask first; do not draft or create it preemptively.
 
-## Configuration files
+When explicitly requested, add an agent only when repeated task needs distinct tools, model behavior, context mode, or tightly scoped prompt. Prefer existing built-in or local agent for one-off work.
 
-### settings.json
+### User-requested workflow
 
-Central runtime config. Edit here for persistent changes:
-- `model` / `provider` — default model/provider for parent agent
-- `theme` — TUI theme
-- `packages` — loaded npm extensions
-- `enabledModels` — model allowlist
+1. Define repeated task, inputs, outputs, errors, and stop conditions.
+2. Inspect installed schema and current agent patterns.
+3. Choose minimum tools, extensions, skills, context, and model policy.
+4. Write concise self-contained prompt with exact output format.
+5. Save definition under `pi-agent/agents/`.
+6. Delegate representative sample and verify result.
 
-### subagents.json
+### Prompt guidelines
 
-`@tintinweb/pi-subagents` runtime defaults, separate from settings.json. Global: `~/.pi/agent/subagents.json` (this repo, committed). Project: `<cwd>/.pi/subagents.json` (written by `/agents` → Settings). Project overrides global.
+- Procedural, not conversational.
+- Self-contained; agents do not know parent context unless inherited.
+- Exact output format and stop rules.
+- Explicit error handling.
+- Short enough to audit. Split only when tasks are genuinely independent.
+- No expert-persona fluff, hedging, or open-ended retries.
 
-Current global:
-```json
-{
-  "rememberAgents": false,
-  "outputTranscript": false
-}
-```
+## Configuration ownership
 
-`outputTranscript: false` disables per-subagent `.output` files. `rememberAgents: false` keeps subagent sessions in memory instead of adding them to pi session storage. Per-agent `output_transcript` and `persist_session` override these defaults. Other settings (max concurrency, default max turns, grace turns, nested depth, default join mode, disable defaults, widget mode, scheduling, tool description mode) via `/agents` → Settings or subagents.json.
+- `settings.json` owns persistent Pi runtime settings and loaded packages.
+- `subagents.json` owns global subagent runtime defaults; project-local config may override it.
+- `mcp.json` owns Pi-specific MCP adapter settings and overrides. Shared/global server definitions may come from external system configuration; preserve layering instead of copying them here.
+- `models.json` owns custom provider/model definitions. Route selection must match available built-in or custom providers.
+- Response-style config belongs in its dedicated JSON file; prompt policy belongs in `SYSTEM.md`.
 
-### mcp.json
+## Memory
 
-MCP server connections. Currently:
-- `kubernetes` — `mcp-server-kubernetes` via npx, common kubeconfig `~/.kube/config`, context `mcp-none` (no single-context filtering)
-- `nixos` — package/option search (Docker)
-- `terraform` — module/provider registry (Docker)
-- `aws-docs` — AWS documentation search (Docker)
-- `github` — GitHub MCP (HTTP, copilot)
-- `sidero-docs` — Sidero Labs docs (HTTP)
+- Personal memory, session indexes, recovery files, and per-project context are runtime state and ignored.
+- Procedural skills intended for sharing are committed under designated skill directories.
+- Do not convert personal memory into repository instructions without explicit request.
 
-To add a new MCP server, add to `servers` object with `command`, `args`, and optional `env`.
+## Extensions and scripts
 
-### models.json
+- Local TUI extensions are auto-discovered from `pi-agent/extensions/*.ts`. Read registrations for current command and UI behavior.
+- Extension dependencies belong in runtime package configuration, not ad hoc vendored copies.
+- Local Pi extensions use current `@earendil-works` Pi API packages; follow existing imports.
+- Helpers under `pi-agent/bin/` own their implementation, usage, and exit-code contract. Keep agent callers aligned with script behavior.
 
-Custom model definitions for local providers (e.g. ollama). Add new providers/models here. The `provider` field in settings.json must match a provider defined here or a builtin provider.
+## Verification
 
-### caveman.json
+Run smallest relevant check:
 
-Response style config:
-- `defaultLevel: "full"` — full caveman mode (drop articles, fragments, terse)
-- `showStatus: false` — no status messages
+- JSON change: parse changed file with `jq empty <file>`.
+- Agent change: run representative delegation through that agent.
+- Extension or helper change: run its focused syntax/self-check or existing test path.
+- Link-task change: inspect `just --list`, then verify `just install` remains idempotent.
+- Runtime setting change: reload or restart Pi as required and inspect effective behavior.
 
-### auth.json
+## Environment
 
-SENSITIVE. Gitignored. Contains:
-- `opencode-go.apiKey` — API key for opencode-go provider
-- `openai-codex.*` — OAuth JWT + refresh token for Codex API
-
-Never commit. Never share. Never read into context unless debugging auth failures.
-
-## Memory system
-
-### pi-hermes-memory/
-
-Persistent memory store managed by `pi-hermes-memory` extension:
-- `USER.md` — user preferences, communication style, standing instructions
-- `MEMORY.md` — global notes, environment facts, tool quirks
-- `failures.md` — categorized failures and lessons learned
-- `skills/` — procedural skills (how-to workflows)
-- `sessions.db` — SQLite session index
-
-All gitignored except skills. Skills are shareable procedures.
-
-### projects-memory/
-
-Per-project memory files. One `MEMORY.md` per project. Gitignored — personal session context, not shared configuration.
-
-## Extensions
-
-TUI extensions in TypeScript under `pi-agent/extensions/`:
-- `git-tag.ts` — `/git-tag` command: summarize commits, create tag, push
-- `pi-codex-bars.ts` — Codex usage widget (session/daily bars)
-- `commit-changes.ts` — `/commit-changes` command: atomic conventional commits (git + jj)
-- `jj-footer.ts` — Footer patch showing jj bookmark instead of git detached HEAD
-- `theme-overrides.ts` — Applies `themeOverrides` from settings.json at session start
-
-The `/agents` subagent management command ships with the `@tintinweb/pi-subagents` package — no local extension.
-
-All extensions import from `@earendil-works/pi-coding-agent` (formerly `@mariozechner/pi-coding-agent`).
-
-## Shell scripts
-
-### bin/yt-summarize
-
-Extracts YouTube transcripts via yt-dlp. Tries 11 languages, cleans VTT/SRT formatting, deduplicates, trims to 600 lines.
-
-Exit codes: 0=success, 1=no transcript, 2=rate limited/bot blocked, 3=error.
-
-Used by `youtube-summarizer` agent.
-
-## Bootstrap flow
-
-On a new machine:
-```bash
-git clone <repo-url> ~/repos/pi-config
-cd ~/repos/pi-config
-just install
-```
-
-`just install` is idempotent — skips symlinks already pointing at correct targets.
-
-## Daily workflow
-
-Edit files in `~/.pi/agent/` (follows symlink to repo). Commit from repo root:
-```bash
-cd ~/repos/pi-config
-git add -A
-git commit -m "descriptive message"
-git push
-```
-
-Changes take effect immediately — pi-agent re-reads agent files on each delegation, settings.json on startup.
-
-## Project conventions
-
-- **No Nix flake or package.nix** here. pi-agent itself is installed via home-manager in `nixos-config` repo.
-- **Caveman mode is enforced** — SYSTEM.md sets response style. Agents should match: terse, technical, no fluff.
-- **User is DevOps/infra engineer** managing prod k8s, ClickHouse, Kafka. Works in Russian with colleagues.
-- **Model default is in `settings.json`** (`defaultModel`/`defaultProvider`). Custom agents pin models in frontmatter — check agent files for current values.
-- **NixOS host.** Missing tools → `nix run nixpkgs#app -- <args>`.
-
-## Related repositories
-
-- `nixos-config/` — NixOS/home-manager config that installs pi-agent and deploys `~/.pi_1/agent/` (read-only).
-- `homelab/` — homelab Kubernetes cluster config.
-- `terraform/` — infrastructure as code.
+- NixOS host. Missing tool: `nix run nixpkgs#app -- <args>`.
+- This repository owns runtime configuration, not Pi installation. External Home Manager configuration owns package installation.
+- No local Nix flake or package expression unless explicitly introduced by a task.
+- Follow active repository VCS workflow. Use Conventional Commits when committing is requested.

@@ -1,7 +1,7 @@
 /**
  * pi-codex-bars — Codex usage footer for pi
  *
- * Renders 7d OpenAI Codex usage inline in a custom 2-line footer
+ * Renders 5h and 7d OpenAI Codex usage inline in a custom 2-line footer
  * matching pi-go-bars layout. Replaces the old below-editor widget.
  *
  * Usage:
@@ -28,11 +28,12 @@ import { resolveJjBookmark } from "./jj-footer.ts";
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface CodexUsageWindow {
-  usagePercent: number;
+  usedPercent: number;
+  resetsAt: number | null;
 }
 
 interface CodexUsageData {
-  usage: CodexUsageWindow | null;
+  usage: { primary: CodexUsageWindow | null; secondary: CodexUsageWindow | null } | null;
   error?: string;
   stale?: boolean;
   warning?: string;
@@ -101,11 +102,17 @@ async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
       throw new Error(`HTTP ${resp.status}`);
     }
     const data = await resp.json() as any;
-    const window = data?.rate_limit?.primary_window;
+    const rateLimit = data?.rate_limit ?? null;
+    const primaryRaw = rateLimit?.primary_window ?? rateLimit?.primary;
+    const secondaryRaw = rateLimit?.secondary_window ?? rateLimit?.secondary;
+    let primary = parseWindow(primaryRaw);
+    let secondary = parseWindow(secondaryRaw);
+    if (!secondary && primary && windowMinutes(primaryRaw) === WEEKLY_WINDOW_MINUTES) {
+      secondary = primary;
+      primary = null;
+    }
     return {
-      usage: {
-        usagePercent: typeof window?.used_percent === "number" ? window.used_percent : 0,
-      },
+      usage: { primary, secondary },
       fetchedAt: Date.now(),
     };
   } finally {
@@ -134,6 +141,24 @@ async function fetchWithCache(): Promise<CodexUsageData> {
 // Formatting helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const WEEKLY_WINDOW_MINUTES = 7 * 24 * 60;
+
+function parseWindow(raw: any): CodexUsageWindow | null {
+  if (!raw || typeof raw !== "object") return null;
+  const usedPercent = typeof raw.used_percent === "number" ? raw.used_percent : 0;
+  const resetsAt = typeof raw.resets_at === "number"
+    ? raw.resets_at
+    : (typeof raw.reset_at === "number" ? raw.reset_at : null);
+  return { usedPercent, resetsAt };
+}
+
+function windowMinutes(raw: any): number | null {
+  if (!raw || typeof raw !== "object") return null;
+  if (typeof raw.window_minutes === "number") return raw.window_minutes;
+  if (typeof raw.limit_window_seconds === "number") return Math.ceil(raw.limit_window_seconds / 60);
+  return null;
+}
+
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -143,6 +168,23 @@ function colorForPercent(value: number): "success" | "warning" | "error" {
   if (value >= 90) return "error";
   if (value >= 70) return "warning";
   return "success";
+}
+
+function formatResetIn(resetsAt: number | null): string {
+  if (resetsAt == null || !Number.isFinite(resetsAt)) return "";
+  const remaining = Math.max(0, Math.round(resetsAt - Date.now() / 1000));
+  const minutes = Math.round(remaining / 60);
+  if (minutes < 90) return `resets in ~${minutes}m`;
+  const hours = Math.round((minutes / 60) * 10) / 10;
+  return `resets in ~${hours}h`;
+}
+
+function formatResetShort(resetsAt: number | null | undefined): string {
+  if (resetsAt == null || !Number.isFinite(resetsAt)) return "";
+  const minutes = Math.max(0, Math.round((resetsAt - Date.now() / 1000) / 60));
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h${minutes % 60}m`;
+  return `${Math.floor(minutes / 1440)}d${Math.floor((minutes % 1440) / 60)}h`;
 }
 
 function formatTokens(count: number): string {
@@ -176,6 +218,14 @@ function fgToBgAnsi(fgAnsi: string): string {
 interface Win {
   label: string;
   pct: number;
+  resetsAt?: number | null;
+}
+
+function usageWins(data: CodexUsageData): Win[] {
+  const wins: Win[] = [];
+  if (data.usage?.primary) wins.push({ label: "5h", pct: data.usage.primary.usedPercent, resetsAt: data.usage.primary.resetsAt });
+  if (data.usage?.secondary) wins.push({ label: "7d", pct: data.usage.secondary.usedPercent, resetsAt: data.usage.secondary.resetsAt });
+  return wins;
 }
 
 function renderBarSegment(t: any, w: Win, barSlots: number): string {
@@ -214,34 +264,47 @@ function renderFooterCodexBar(
       ? t.fg("dim", "loading...") : "";
   }
   if (!data || data.error) return "";
-  if (!data.usage) return "";
+  const wins = usageWins(data);
+  if (wins.length === 0) return "";
 
   const staleSuffix = data.stale ? t.fg("warning", " stale") : "";
-  const w: Win = { label: "7d", pct: data.usage.usagePercent };
   const staleW = visibleWidth(staleSuffix);
+  const sepW = wins.length - 1;
 
-  // Determine minimum viable layout: try label, then bare
+  const minWithLabels = wins.reduce((s, w) => s + w.label.length + 1 + 4, 0) + sepW + staleW;
+  const resets = wins.map((w) => formatResetShort(w.resetsAt));
+  const resetW = resets.reduce((sum, reset) => sum + (reset ? reset.length + 1 : 0), 0);
+  const minBare = wins.length * 4 + sepW + staleW;
+
+  let showLabels = false;
+  let showResets = false;
   let barSlots = 4;
-  let showLabel = false;
+  if (minWithLabels + resetW <= maxWidth) {
+    showLabels = true;
+    showResets = true;
+  } else if (minWithLabels <= maxWidth) {
+    showLabels = true;
+  } else if (minBare <= maxWidth) {
+    showLabels = false;
+  } else {
+    return "";
+  }
 
-  const bareWidth = 4 + staleW;
-  if (bareWidth > maxWidth) return "";
-
-  const withLabel = w.label.length + 1 + 4 + staleW;
-  if (withLabel <= maxWidth) { showLabel = true; }
-  // else bare: no label — 4-char bar only
-
-  // Expand bar to fill remaining space
-  let used = showLabel ? w.label.length + 1 : 0;
-  used += barSlots;
-  used += staleW;
+  let used = 0;
+  if (showLabels) used += wins.reduce((s, w) => s + w.label.length + 1, 0);
+  if (showResets) used += resetW;
+  used += wins.length * barSlots + sepW + staleW;
   const remaining = Math.max(0, maxWidth - used);
-  barSlots = Math.min(20, barSlots + remaining);
+  barSlots = Math.min(20, barSlots + Math.floor(remaining / wins.length));
 
-  const parts: string[] = [];
-  if (showLabel) parts.push(t.fg("muted", w.label + " "));
-  parts.push(renderBarSegment(t, w, barSlots));
-  return parts.join("") + staleSuffix;
+  const parts = wins.map((w, i) => {
+    let seg = "";
+    if (showLabels) seg += t.fg("muted", w.label + " ");
+    seg += renderBarSegment(t, w, barSlots);
+    if (showResets && resets[i]) seg += t.fg("dim", ` ${resets[i]}`);
+    return seg;
+  });
+  return parts.join(" ") + staleSuffix;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -276,16 +339,21 @@ function buildDetailOverlay(
     }
 
     if (data.usage) {
-      const pct = clampPercent(data.usage.usagePercent);
-      const color = colorForPercent(pct);
+      const wins = usageWins(data);
       const barW = 16;
-      const filled = Math.round((pct / 100) * barW);
-      const bar =
-        t.fg(color, "\u2588".repeat(Math.max(0, filled))) +
-        t.fg("dim", "\u2591".repeat(Math.max(0, barW - filled)));
-      lines.push(
-        t.fg("muted", "7d".padEnd(10)) + bar + " " + t.fg(color, `${pct}%`),
-      );
+      for (const w of wins) {
+        const pct = clampPercent(w.pct);
+        const color = colorForPercent(pct);
+        const filled = Math.round((pct / 100) * barW);
+        const bar =
+          t.fg(color, "\u2588".repeat(Math.max(0, filled))) +
+          t.fg("dim", "\u2591".repeat(Math.max(0, barW - filled)));
+        const reset = w.resetsAt != null ? formatResetIn(w.resetsAt) : "";
+        lines.push(
+          t.fg("muted", w.label.padEnd(10)) + bar + " " + t.fg(color, `${pct}%`) +
+            (reset ? "  " + t.fg("dim", reset) : ""),
+        );
+      }
       lines.push("");
     }
   }
@@ -554,7 +622,7 @@ export default function (pi: ExtensionAPI) {
   // ── Commands ───────────────────────────────────────────────────────────
 
   pi.registerCommand("codex", {
-    description: "Show OpenAI Codex usage (7d window)",
+    description: "Show OpenAI Codex usage (5h and 7d windows)",
     handler: async (_args, _ctx) => {
       try {
         if (_ctx.ui) {

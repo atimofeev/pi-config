@@ -4,6 +4,6 @@ display_name: Agent
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: opencode-go/deepseek-v4-pro
+model: deepseek/deepseek-v4-pro
 prompt_mode: append
 ---

@@ -5,7 +5,7 @@ tools: read, bash, grep, find, ls
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: opencode-go/deepseek-v4-pro
+model: deepseek/deepseek-v4-pro
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

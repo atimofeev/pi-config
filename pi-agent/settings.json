@@ -44,5 +44,6 @@
   "autocompleteMaxVisible": 10,
   "terminal": {
     "showTerminalProgress": false
-  }
+  },
+  "collapseChangelog": true
 }

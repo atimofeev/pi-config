@@ -29,7 +29,6 @@
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
     "npm:@juicesharp/rpiv-btw",
-    "git:github.com/DietrichGebert/ponytail@v4.9.0",
     "npm:@narumitw/pi-caffeinate"
   ],
   "theme": "catppuccin-mocha",

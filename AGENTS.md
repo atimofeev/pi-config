@@ -20,7 +20,7 @@ pi-agent/
   bin/                    # helper executables
   pi-hermes-memory/       # memory extension state and committed skills
   projects-memory/        # ignored per-project state
-  SYSTEM.md               # global runtime instructions
+  APPEND_SYSTEM.md        # global runtime instructions appended to Pi defaults
   settings.json           # primary Pi runtime settings
   subagents.json          # subagent runtime defaults
   models.json             # custom model definitions
@@ -41,9 +41,9 @@ Use directory patterns and configuration files to discover current contents. Do 
 
 ## Edit boundaries
 
-- Minimum scoped diff. Touch only files required by the task.
-- Reuse existing definitions and extension patterns before adding new ones.
-- Do not add abstractions, packages, agents, or config layers speculatively.
+- Touch only files required by the task.
+- Reuse existing extension patterns before adding new ones.
+- Do not add agents or config layers speculatively.
 - Comments only for non-obvious behavior.
 - `.gitignore` is the source of truth for sensitive and generated state.
 - Do not edit ignored credentials, sessions, caches, memory databases, discovered-model state, installed packages, or per-project memory unless the task explicitly targets that state.
@@ -60,7 +60,7 @@ Use directory patterns and configuration files to discover current contents. Do 
 | Global subagent defaults | `pi-agent/subagents.json` |
 | MCP settings and server overrides | `pi-agent/mcp.json` |
 | Local extension inventory and commands | `pi-agent/extensions/*.ts` |
-| Global response and delegation policy | `pi-agent/SYSTEM.md` |
+| Global response and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
 | Helper behavior and exit status | executable under `pi-agent/bin/` |
 
 Current values belong in these files, not in `AGENTS.md`.
@@ -122,7 +122,7 @@ When explicitly requested, add an agent only when repeated task needs distinct t
 - `subagents.json` owns global subagent runtime defaults; project-local config may override it.
 - `mcp.json` owns Pi-specific MCP adapter settings and overrides. Shared/global server definitions may come from external system configuration; preserve layering instead of copying them here.
 - `models.json` owns custom provider/model definitions. Route selection must match available built-in or custom providers.
-- Response-style config belongs in its dedicated JSON file; prompt policy belongs in `SYSTEM.md`.
+- Response-style config belongs in its dedicated JSON file; prompt policy belongs in `APPEND_SYSTEM.md`.
 
 ## Memory
 

@@ -25,7 +25,7 @@ pi-agent/
   bin/                    # helper executables
   pi-hermes-memory/       # memory extension state and skills
   projects-memory/        # ignored per-project state
-  SYSTEM.md               # global runtime instructions
+  APPEND_SYSTEM.md        # global runtime instructions appended to Pi defaults
   settings.json           # primary runtime settings
   subagents.json          # subagent runtime defaults
   models.json             # custom model definitions
@@ -43,7 +43,7 @@ pi-agent/
 | Custom model definitions | `pi-agent/models.json` |
 | MCP settings and overrides | `pi-agent/mcp.json` |
 | Local extensions and commands | `pi-agent/extensions/*.ts` |
-| Global prompt and delegation policy | `pi-agent/SYSTEM.md` |
+| Global prompt and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
 
 Read current values from these files. Do not duplicate inventories of agents, extensions, commands, models, MCP servers, versions, packages, or link targets in documentation.
 

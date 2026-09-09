@@ -1,13 +1,13 @@
 {
   "defaultModel": "high",
-  "defaultProvider": "9router",
+  "defaultProvider": "litellm",
   "defaultThinkingLevel": "high",
   "enabledModels": [
-    "9router/high",
-    "9router/medium",
-    "9router/low",
-    "9router/free",
-    "amazon-bedrock/global.anthropic.claude-fable-5",
+    "litellm/high",
+    "litellm/medium",
+    "litellm/low",
+    "litellm/free",
+    "amazon-bedrock/global.anthropic.claude-fable-5-1",
     "amazon-bedrock/global.anthropic.claude-opus-5",
     "amazon-bedrock/global.anthropic.claude-sonnet-5",
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -28,7 +28,8 @@
     "npm:@juicesharp/rpiv-web-tools",
     "npm:@upstash/context7-pi",
     "npm:@juicesharp/rpiv-btw",
-    "npm:@narumitw/pi-caffeinate"
+    "npm:@narumitw/pi-caffeinate",
+    "npm:pi-provider-litellm"
   ],
   "theme": "catppuccin-mocha",
   "themeOverrides": {

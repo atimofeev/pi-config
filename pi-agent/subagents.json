@@ -1,4 +1,6 @@
 {
+  "defaultMaxTurns": 20,
+  "graceTurns": 3,
   "rememberAgents": false,
   "outputTranscript": false
 }

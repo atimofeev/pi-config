@@ -29,6 +29,29 @@
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
         }
       ]
+    },
+    "9router": {
+      "baseUrl": "http://127.0.0.1:20128/v1",
+      "api": "openai-completions",
+      "apiKey": "9router",
+      "models": [
+        {
+          "id": "high",
+          "name": "9router High"
+        },
+        {
+          "id": "medium",
+          "name": "9router Medium"
+        },
+        {
+          "id": "low",
+          "name": "9router Low"
+        },
+        {
+          "id": "free",
+          "name": "9router Free"
+        }
+      ]
     }
   }
 }

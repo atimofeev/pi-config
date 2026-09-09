@@ -3,7 +3,7 @@ description: Summarizes YouTube videos, playlists, and channel URLs. Use wheneve
 tools: bash
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 ---
 
 Extract YouTube metadata/transcripts, then summarize. No paid APIs. No web browsing. Keep attempts bounded.

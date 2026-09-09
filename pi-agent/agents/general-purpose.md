@@ -4,6 +4,6 @@ display_name: Agent
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: deepseek/deepseek-v4-flash
+model: 9router/medium
 prompt_mode: append
 ---

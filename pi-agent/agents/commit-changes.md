@@ -6,7 +6,7 @@ display_name: Commit Changes
 tools: bash, read
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 prompt_mode: replace
 ---
 

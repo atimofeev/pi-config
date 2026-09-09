@@ -6,7 +6,7 @@ description: |
 tools: ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search
 extensions: rpiv-web-tools
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 thinking: low
 ---
 You are a content fetcher. Fetch URLs or search the web. Return raw output.

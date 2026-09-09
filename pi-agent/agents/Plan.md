@@ -5,7 +5,7 @@ tools: read, bash, grep, find, ls
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: deepseek/deepseek-v4-pro
+model: 9router/high
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

@@ -5,7 +5,7 @@ description: |
 tools: bash
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 ---
 
 Download Bandcamp tracks/albums to ~/Downloads. Detect bandcamp.com URLs in user request. Single command, report result. No retry loops.

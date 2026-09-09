@@ -4,7 +4,7 @@ display_name: Explore
 tools: read, bash, grep, find, ls
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 thinking: low
 prompt_mode: replace
 ---

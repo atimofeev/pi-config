@@ -7,7 +7,7 @@ description: |
 tools: none
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 ---
 
 You are a terraform diff analyzer. The task contains a pasted terraform plan diff (or asks you to analyze one). Extract the real change. Discard noise.

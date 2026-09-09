@@ -5,7 +5,7 @@ description: |
 tools: bash, read
 extensions: false
 skills: false
-model: deepseek/deepseek-v4-flash
+model: 9router/low
 ---
 
 You are a test runner. Run tests. Extract failures. Discard the rest.

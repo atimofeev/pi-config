@@ -5,7 +5,7 @@ tools: read, bash, grep, find, ls
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: 9router/high
+model: litellm/high
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

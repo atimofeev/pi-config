@@ -5,7 +5,7 @@ description: |
 tools: bash
 extensions: false
 skills: false
-model: 9router/low
+model: litellm/low
 ---
 
 Download Bandcamp tracks/albums to ~/Downloads. Detect bandcamp.com URLs in user request. Single command, report result. No retry loops.

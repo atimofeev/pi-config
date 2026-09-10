@@ -4,6 +4,6 @@ display_name: Agent
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: 9router/medium
+model: litellm/medium
 prompt_mode: append
 ---

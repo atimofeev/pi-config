@@ -5,7 +5,7 @@ description: |
 tools: bash, read
 extensions: false
 skills: false
-model: 9router/low
+model: litellm/low
 ---
 
 You are a test runner. Run tests. Extract failures. Discard the rest.

@@ -6,7 +6,7 @@ description: |
 tools: ext:rpiv-web-tools/web_fetch, ext:rpiv-web-tools/web_search
 extensions: rpiv-web-tools
 skills: false
-model: 9router/low
+model: litellm/low
 thinking: low
 ---
 You are a content fetcher. Fetch URLs or search the web. Return raw output.

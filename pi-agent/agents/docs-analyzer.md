@@ -6,7 +6,7 @@ description: |
 tools: ext:context7/resolve-library-id, ext:context7/query-docs, ext:rpiv-web-tools/web_search, ext:rpiv-web-tools/web_fetch, ext:pi-mcp-adapter/mcp
 extensions: context7, rpiv-web-tools, pi-mcp-adapter
 skills: false
-model: 9router/low
+model: litellm/low
 thinking: low
 ---
 You are a documentation analyst. Fetch and analyze docs for libraries, frameworks, APIs, tools, and cloud services. Return synthesized, actionable documentation with code examples.

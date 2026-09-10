@@ -6,7 +6,7 @@ display_name: Commit Changes
 tools: bash, read
 extensions: false
 skills: false
-model: 9router/low
+model: litellm/low
 prompt_mode: replace
 ---
 

@@ -4,7 +4,7 @@ display_name: Explore
 tools: read, bash, grep, find, ls
 extensions: false
 skills: false
-model: 9router/low
+model: litellm/low
 thinking: low
 prompt_mode: replace
 ---

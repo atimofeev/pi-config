@@ -148,6 +148,7 @@ function buildPrompt(extraContext: string, preflight: Preflight): string {
     "Delegate this entire request to the `commit-changes` subagent.",
     "Perform no git or jj shell operations yourself.",
     "Pass the preflight and any additional context below to the subagent unchanged.",
+    "If you see a Jira ticket provided in additional context, add it to the commit body.",
     "Return the subagent final response verbatim.",
     "",
     "Preflight:",

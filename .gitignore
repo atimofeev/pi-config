@@ -28,3 +28,8 @@ pi-agent/mcp-onboarding.json
 
 # Model discovery cache
 pi-agent/models-store.json
+# generated litellm-mcp-pauses (pi-provider-litellm runtime state)
+pi-agent/litellm-mcp-pauses/
+
+# Generated/runtime LiteLLM model discovery data
+pi-agent/litellm-models-dev.json

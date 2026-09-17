@@ -40,6 +40,11 @@
   },
   "treeFilterMode": "default",
   "enableInstallTelemetry": false,
+  "litellm": {
+    "mcp": {
+      "enabled": false
+    }
+  },
   "autocompleteMaxVisible": 10,
   "terminal": {
     "showTerminalProgress": false

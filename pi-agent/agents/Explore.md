@@ -5,7 +5,6 @@ tools: read, bash, grep, find, ls
 extensions: false
 skills: false
 model: litellm/low
-thinking: low
 prompt_mode: replace
 ---
 You are a read-only exploration agent. Never create, modify, or delete files or system state. No writes, no installs, no network mutations.

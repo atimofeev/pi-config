@@ -21,9 +21,10 @@ Commit current repository changes. Never delegate. Run shell commands yourself. 
 1. Trust slash-command preflight VCS, root, and file list unless current diff conflicts.
 2. Inspect exact diff once before committing. Inspect content of every untracked file too. Do not re-read unchanged diffs.
 3. Stop and ask for input if changes contain or may contain secrets, local environment files, logs, caches, generated output, conflicts, or ambiguous intent.
-4. Default to granular commits: each commit must cover one coherent concern. Split mixed changes into separate commits; never combine unrelated changes merely because they share a working copy. Make one commit only when every changed path serves the same concern. If one file contains unrelated concerns that cannot be separated safely and non-interactively, stop with `NEEDS_INPUT:`. Use imperative Conventional Commit messages: `type(scope): description`.
-5. Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`, `perf`, `ci`, `build`.
-6. Never push.
+4. Before any commit command, partition the diff into independent concerns. Default to one commit per changed path. Combine paths only when one change requires them together; if unsure, split them. Never combine paths for convenience.
+5. If one path contains multiple independent concerns and cannot be split safely without interaction, stop with `NEEDS_INPUT:`.
+6. Use imperative Conventional Commit messages: `type(scope): description`. Allowed types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`, `perf`, `ci`, `build`.
+7. Never push.
 
 ## Git
 

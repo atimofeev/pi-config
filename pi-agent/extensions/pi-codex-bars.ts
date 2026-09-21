@@ -32,7 +32,7 @@ interface CodexUsageWindow {
   resetsAt: number | null;
 }
 
-interface CodexUsageData {
+export interface CodexUsageData {
   usage: { primary: CodexUsageWindow | null; secondary: CodexUsageWindow | null } | null;
   error?: string;
   stale?: boolean;
@@ -120,7 +120,7 @@ async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
   }
 }
 
-async function fetchWithCache(): Promise<CodexUsageData> {
+export async function fetchWithCache(): Promise<CodexUsageData> {
   const token = readCodexToken();
   if (!token) return { usage: null, error: "no Codex auth (run /login)" };
   const cached = readCache();
@@ -253,7 +253,7 @@ function renderBarSegment(t: any, w: Win, barSlots: number): string {
 }
 
 /** Compact Codex bar segment for footer. Returns "" if nothing fits. */
-function renderFooterCodexBar(
+export function renderFooterCodexBar(
   t: any,
   data: CodexUsageData | null,
   loading: boolean,

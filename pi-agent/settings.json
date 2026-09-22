@@ -42,6 +42,9 @@
   "treeFilterMode": "default",
   "enableInstallTelemetry": false,
   "litellm": {
+    "skills": {
+      "enabled": false
+    },
     "mcp": {
       "enabled": false
     }

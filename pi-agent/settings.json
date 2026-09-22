@@ -33,8 +33,9 @@
   ],
   "theme": "catppuccin-mocha",
   "themeOverrides": {
-    "toolSuccessBg": "#181825",
-    "toolErrorBg": "#11111b",
+    "toolPendingBg": "#181825",
+    "toolSuccessBg": "#11111b",
+    "toolErrorBg": "#150407",
     "toolDiffAdded": "teal",
     "toolDiffRemoved": "maroon"
   },

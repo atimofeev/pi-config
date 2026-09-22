@@ -213,7 +213,8 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", (event, ctx) => {
     if (!ctx.hasUI) return;
 
-    const delayMs = event.reason === "reload" ? 1000 : 0;
+    // Session replacement restores settings after this hook and would overwrite the custom theme.
+    const delayMs = event.reason === "startup" ? 0 : 1000;
     setTimeout(() => applyThemeOverrides(ctx), delayMs);
   });
 }

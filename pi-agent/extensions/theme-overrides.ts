@@ -211,7 +211,6 @@ function applyThemeOverrides(ctx: any): void {
 export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", (event, ctx) => {
-    if (event.reason !== "startup" && event.reason !== "reload") return;
     if (!ctx.hasUI) return;
 
     const delayMs = event.reason === "reload" ? 1000 : 0;

@@ -117,7 +117,7 @@ function registerVcsRenderer(
         if (index > 0) {
           box.addChild(new Spacer(1));
         }
-        const fileBox = new Box(1, 0, (text) => theme.bg("toolErrorBg", text));
+        const fileBox = new Box(1, 0, (text) => theme.bg("toolPendingBg", text));
         fileBox.addChild(new Text(block, 0, 0));
         box.addChild(fileBox);
       }

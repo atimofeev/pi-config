@@ -150,7 +150,11 @@ function showDiff(
   }
 
   if (!result.stdout.trim()) {
-    ctx.ui.notify("No changes", "info");
+    pi.appendEntry<VcsEntry>("vcs-diff", {
+      vcs,
+      root,
+      output: "No changes",
+    });
     return;
   }
 
@@ -233,7 +237,11 @@ function showStatus(
   }
 
   if (!result.stdout.trim()) {
-    ctx.ui.notify("No changes", "info");
+    pi.appendEntry<VcsEntry>("vcs-status", {
+      vcs,
+      root,
+      output: "No changes",
+    });
     return;
   }
 

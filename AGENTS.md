@@ -134,6 +134,7 @@ When explicitly requested, add an agent only when repeated task needs distinct t
 ## Extensions and scripts
 
 - Local TUI extensions are auto-discovered from `pi-agent/extensions/*.ts`. Read registrations for current command and UI behavior.
+- `subagent-context.ts` injects bounded working-directory, VCS, and applicable `AGENTS.md` context into replace-mode subagents that allowlist it.
 - Extension dependencies belong in runtime package configuration, not ad hoc vendored copies.
 - Local Pi extensions use current `@earendil-works` Pi API packages; follow existing imports.
 - Helpers under `pi-agent/bin/` own their implementation, usage, and exit-code contract. Keep agent callers aligned with script behavior.

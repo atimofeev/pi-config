@@ -5,7 +5,7 @@ tools: read, bash, grep, find, ls
 extensions: true
 skills: true
 disallowed_tools: notebook
-model: litellm/high
+model: litellm/medium
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

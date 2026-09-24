@@ -20,7 +20,7 @@ pi-agent/
   bin/                    # helper executables
   pi-hermes-memory/       # memory extension state and committed skills
   projects-memory/        # ignored per-project state
-  APPEND_SYSTEM.md        # global runtime instructions appended to Pi defaults
+  APPEND_SYSTEM.md        # primary-agent instructions appended to Pi defaults
   settings.json           # primary Pi runtime settings
   subagents.json          # subagent runtime defaults
   models.json             # custom model definitions
@@ -60,7 +60,7 @@ Use directory patterns and configuration files to discover current contents. Do 
 | Global subagent defaults | `pi-agent/subagents.json` |
 | MCP settings and server overrides | `pi-agent/mcp.json` |
 | Local extension inventory and commands | `pi-agent/extensions/*.ts` |
-| Global response and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
+| Primary-agent prompt and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
 | Helper behavior and exit status | executable under `pi-agent/bin/` |
 
 Current values belong in these files, not in `AGENTS.md`.
@@ -91,6 +91,7 @@ Supported fields, defaults, discovery precedence, and selectors depend on instal
 - Keep skills and extensions disabled unless agent uses them.
 - Do not enable nested subagents without an explicit requirement.
 - Verify effective inventory and scope through runtime agent tooling rather than duplicating precedence rules here.
+- Keep parent orchestration policy out of subagent prompts. Agents using `prompt_mode: replace` must define their own concise worker contract; use `prompt_mode: append` only when inheriting parent policy is intentional.
 
 ## Agent-definition hard rule
 

@@ -2,7 +2,7 @@
 description: Fast read-only code search and exploration. Finds files, symbols, and context without modifying anything.
 display_name: Explore
 tools: read, bash, grep, find, ls
-extensions: false
+extensions: subagent-context
 skills: false
 model: litellm/low
 prompt_mode: replace

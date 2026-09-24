@@ -5,7 +5,7 @@ tools: read, bash, grep, find, ls
 extensions: subagent-context
 skills: true
 disallowed_tools: notebook
-model: litellm/medium
+model: litellm/high
 prompt_mode: replace
 ---
 # CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS

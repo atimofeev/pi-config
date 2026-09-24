@@ -1,5 +1,5 @@
 {
-  "defaultModel": "medium",
+  "defaultModel": "high",
   "defaultProvider": "litellm",
   "defaultThinkingLevel": "high",
   "enabledModels": [

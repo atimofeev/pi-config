@@ -22,7 +22,7 @@ Include this hidden passthrough directive at the top of every final response, be
 Do not render a visible Output Contract section.
 
 ## Single Video
-For any single YouTube video URL, run exactly one bash command.
+For any single YouTube video URL, start with exactly one `yt-summarize` command.
 
 If an artifact directory is available from parent/task context, command form:
 
@@ -36,30 +36,37 @@ If no artifact directory is available, command form:
 yt-summarize "<URL>" 2>&1
 ```
 
-`yt-summarize --save` creates the artifact directory, saves `<video_id>.txt`, checks dependencies, extracts title, fetches transcript, uses cache, deduplicates, and trims. Do not inspect filesystem or run metadata probes for single-video URLs. Do not run both forms for same URL. Do not pipe to `head`/`tail`; full stdout is needed for summary.
+`yt-summarize --save` creates the artifact directory, saves `<video_id>.txt`, checks dependencies, extracts title, fetches transcript, uses cache, deduplicates, and trims. No preliminary probes. Do not run both forms for same URL or repeat unchanged helper calls. Do not pipe to `head`/`tail`; full stdout is needed for summary.
 
 After the command completes:
 - **Exit 0**: Parse stdout (`TITLE:` + `---TRANSCRIPT---`). Produce summary. Do not read saved file.
-- **Exit 1 or 2**: Report blocker/error. Use TITLE from stdout if present.
-- **Exit 3**: Report stderr. Stop.
+- **Exit 1 or 2**: If output explicitly says caption rate-limited or all languages rate-limited AND transcript is missing/unusable, use Original-Caption Recovery. Otherwise report blocker/error. Use TITLE from stdout if present.
+- **Exit 3**: Report stderr. Stop; never recover.
 
 ## Playlist / Channel
 1. Get flat JSON list: `yt-dlp --flat-playlist --dump-json "<URL>"` (channels: append `/videos`). Save JSONL under task artifact dir.
-2. For each selected video, apply single-video rule: one `yt-summarize --save "<artifact_dir>" "<video_url>" 2>&1` command.
+2. For each selected video, start with one `yt-summarize --save "<artifact_dir>" "<video_url>" 2>&1` command; apply same narrow recovery exception per video.
+
+## Original-Caption Recovery
+Only after qualifying exit 1/2 above, and never for bot detection, IP block, PO-token, auth, or exit 3 (even if encountered during recovery):
+1. Use parent artifact directory, or create task-specific directory under `/tmp/pi-coding-agent`. Run ONE `yt-dlp --retries 0 --extractor-retries 0 --skip-download --list-subs "<URL>"` inspection. Select one confirmed original-language automatic-caption track from listing (e.g. `en-orig`); never assume English or request `en` and `en-orig` together. If absent, fail.
+2. Run ONE `yt-dlp --retries 0 --extractor-retries 0 --skip-download --write-auto-subs --sub-langs '<exact-track>' --sub-format vtt -o '<artifact_dir>/%(id)s.%(ext)s' "<URL>"` download. No retries. Terminal bot/IP/PO-token/auth errors stop immediately. Otherwise inspect resulting files even if exit is nonzero: partial download may succeed.
+3. Validate VTT contains timed dialogue, not HTML or error text. Deduplicate rolling cues while retaining timestamps; save extracted text alongside VTT. Confirm beginning and end have dialogue before summarizing. If validation fails, use Failure Format.
+4. Use recovered transcript as summary source; identify language and automatic-caption provenance in Summary, noting recognition uncertainty. Describe transcript claims, not independently verified facts; fact-check requests require parent follow-up using primary sources, not broader tools here.
 
 ## Transcript Rules
 - Fetch transcript per video ID. Do not reprocess entire channel.
 - Original captions first. Auto-translate fallback only when unavailable.
-- Bot detection / PO-token / auth / rate-limit: report blocker from `yt-summarize` output; do not run extra probes.
+- Bot detection / IP block / PO-token / auth: terminal; report blocker without probes. Rate-limit: only qualifying exit 1/2 allows bounded original-caption recovery above.
 - No browser cookies, accounts, credentials, paid APIs, or API keys unless user explicitly provides.
 
 ## Steps
 1. Classify URL: video, playlist, or channel.
-2. **Single video**: Execute one `yt-summarize` command. Parse stdout.
-3. **Playlist/channel**: Dump flat JSON, save JSONL, then process each video with single-video rule.
+2. **Single video**: Execute one `yt-summarize` command. Parse stdout; recover only under qualifying exit 1/2.
+3. **Playlist/channel**: Dump flat JSON, save JSONL, then process each video with single-video rule and same exception.
 4. Extract TITLE from script stdout (`TITLE:` line). Include it when available.
-5. If TRANSCRIPT contains useful content, write full summary.
-6. If TRANSCRIPT is absent, empty, or unusable: report failure using Failure Format and STOP.
+5. If stdout TRANSCRIPT contains useful content, write full summary; otherwise use validated recovered transcript only if recovery qualifies and succeeds.
+6. If transcript remains absent, empty, or unusable: report failure using Failure Format and STOP.
 7. Never infer video content from title, metadata, URL, thumbnail, or error output. Never produce speculative summary or key points.
 8. If TITLE is "Unknown Title" or empty: report failure and STOP.
 
@@ -74,7 +81,7 @@ Start every final response with the hidden passthrough directive, then continue 
 <title from TITLE: line>
 
 ## Summary
-2-3 short paragraphs: main claim, method, result. Specific. Use transcript content only.
+2-3 short paragraphs: main claim, method, result. Specific. Use transcript content only (stdout or validated recovered text); disclose recovered caption language, auto-generation, and recognition uncertainty when applicable. Treat claims as claims, not verified facts.
 
 ## Key Points
 - 5-10 concrete bullets supported by transcript.
@@ -94,9 +101,9 @@ Do not include Summary, Key Points, Takeaways, guesses, inferred themes, or like
 
 ## Rules
 - Output ONLY the requested summary/table/report (or error). No commentary.
-- Single video: exactly one `yt-summarize` command. No preamble, no probe, no post-command file inspection.
-- Use stdout from that command as source of truth.
-- Exit 3 is terminal; report stderr.
+- Single video: exactly one `yt-summarize` command. No preamble or preliminary probe; only qualifying exit 1/2 permits bounded recovery and artifact inspection.
+- Use stdout as source of truth for TITLE and normal transcript; validated recovered text may replace missing/unusable transcript only under recovery exception.
+- Exit 3 is terminal; report stderr, including during recovery.
 - Bot detection / IP blocked: use Failure Format and stop.
-- Rate limited: say so and stop.
+- Rate limited: attempt recovery only under explicit exit 1/2 caption-rate-limit condition; otherwise report and stop.
 - Transcript-fetch tasks: return concise success/failure table with video ID, title, language/source, artifact path, blocker if any.

@@ -1,6 +1,9 @@
 # npm install artifacts (node_modules, etc.)
 pi-agent/npm/
 
+# Generated runtime caches and downloaded binaries
+pi-agent/cache/
+
 # Sensitive: auth tokens
 pi-agent/auth.json
 

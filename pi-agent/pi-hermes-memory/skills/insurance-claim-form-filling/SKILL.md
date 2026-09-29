@@ -1,13 +1,16 @@
 ---
 name: "insurance-claim-form-filling"
 description: "Fill a claim/questionnaire AcroForm PDF from records archived in Paperless: pull the subject's data from a Person document, pair it with the matching receipts and medical reports, map form fields by geometry, fill with ephemeral Nix tooling, verify by read-back and render."
-version: 3
+version: 4
 created: "2026-09-29"
 updated: "2026-09-29"
 ---
 ## When to Use
-Use when a user asks to fill in a claim, reimbursement or questionnaire PDF (insurance, employer, or official form) where the source data is archived in Paperless. The workflow assumes Paperless holds a Person-style document type with the subject's identity, contact, employment, policy and bank details as typed custom fields, plus receipts and medical or lab reports as separate documents that supply the event, diagnosis and amounts. It applies to any fillable AcroForm PDF, not to flat scans, and it fits NixOS hosts where tooling is used ephemerally. Reuse it for each new claim and for each family member, since the only thing that changes is which Person record and which evidence documents are pulled.
+Use when filling a voluntary health insurance claim form - a multi-page AcroForm with contractor, insured, event and declaration blocks - or the equivalent step for any AcroForm PDF that must be filled from Paperless records. Also applies to the general task of filling a blank government or insurer PDF from data archived in Paperless on NixOS. The blank form is stored in Paperless as a `Template` document; person data lives in `Person` custom fields and company data in `Company` custom fields. Requires Paperless reachable (see the project notes for the port-forward and API token secret) and Nix available for ephemeral tooling.
 
+Two facts this procedure depends on, worth checking before the first fill: the form has no date-of-birth field, so that value belongs only in the covering email; and the patient-specific versus event-specific split of the fields is fixed - patient identity comes from the Person record, while event date, institution, cause, diagnosis and amount come from the receipt and the matching medical report, never from the receipt alone since receipts carry no diagnosis.
+
+See also the companion skill `insurance-claim-package-and-send`, which covers grouping several receipts into insured events, assembling one folder per claim, converting photo scans into submittable PDFs, and generating the covering email drafts. Use this skill for the form itself and that one for everything around it.
 ## Procedure
 1. Identify the claim: which subject it is for, and which event it covers (a visit, treatment, purchase or stay). Ask if the request does not name both.
 2. Gather the subject's data from their Person record. Person records live in a dedicated document type; every identity, contact, employment, policy and bank detail belongs there as a typed custom field. Read the record and its custom fields with `paperless_list_documents({ document_type: <person type id>, page_size: 50 })` — each result carries a populated `custom_fields` array. Treat these typed values as authoritative and never re-derive them from scanned text. If a needed field is empty, ask the user instead of guessing.

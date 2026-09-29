@@ -3,6 +3,7 @@
   "defaultProvider": "litellm",
   "defaultThinkingLevel": "high",
   "enabledModels": [
+    "deepseek/deepseek-flash",
     "litellm/high",
     "litellm/medium",
     "litellm/low",

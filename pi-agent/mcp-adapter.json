@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "mcpFooterStatus": "off"
+  },
+  "mcpServers": {
+    "aws-docs": {
+      "directTools": "search"
+    },
+    "nixos": {
+      "directTools": "search"
+    },
+    "paperless": {
+      "url": "http://127.0.0.1:3001/sse",
+      "directTools": "search"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "defaultModel": "high",
+  "defaultModel": "medium",
   "defaultProvider": "litellm",
   "defaultThinkingLevel": "high",
   "enabledModels": [
@@ -9,8 +9,8 @@
     "litellm/low",
     "litellm/free",
     "amazon-bedrock/global.anthropic.claude-fable-5-1",
-    "amazon-bedrock/global.anthropic.claude-opus-5",
-    "amazon-bedrock/global.anthropic.claude-sonnet-5",
+    "amazon-bedrock/global.anthropic.claude-opus-5-5",
+    "amazon-bedrock/global.anthropic.claude-sonnet-5-5",
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
   "hideThinkingBlock": true,

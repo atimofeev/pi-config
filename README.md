@@ -29,7 +29,7 @@ pi-agent/
   settings.json           # primary runtime settings
   subagents.json          # subagent runtime defaults
   models.json             # custom model definitions
-  mcp.json                # MCP adapter settings and overrides
+  mcp.json                # optional native Pi MCP file overrides
 ```
 
 ## Sources of truth
@@ -41,9 +41,15 @@ pi-agent/
 | Agent inventory and per-agent policy | `pi-agent/agents/*.md` |
 | Subagent runtime defaults | `pi-agent/subagents.json` |
 | Custom model definitions | `pi-agent/models.json` |
-| MCP settings and overrides | `pi-agent/mcp.json` |
+| Shared MCP connection definitions | External Home Manager `~/.config/mcp/mcp.json` |
+| Pi-only MCP exposure policy and shared importer | `pi-agent/extensions/shared-mcp.ts` |
+| Optional native MCP file overrides | `pi-agent/mcp.json` |
 | Local extensions and commands | `pi-agent/extensions/*.ts` |
 | Primary-agent prompt and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
+
+Shared connection definitions come from external Home Manager `~/.config/mcp/mcp.json`. The native importer in `pi-agent/extensions/shared-mcp.ts` respects `XDG_CONFIG_HOME` and uses `registerMcpServer`; it does not replace the native `/mcp` command. Pi-only exposure policy lives in that extension, and `/reload` rereads the shared configuration.
+
+Native Pi also reads `~/.pi/agent/mcp.json`, deployed through the agent-directory link. `pi-agent/mcp.json` is optional file overrides, not the shared source: a native file definition replaces the entire registered entry, rather than merging fields. Session `/mcp` sees imported servers; shell `pi mcp list` does not load extensions and lists only file-defined servers.
 
 Read current values from these files. Do not duplicate inventories of agents, extensions, commands, models, MCP servers, versions, packages, or link targets in documentation.
 

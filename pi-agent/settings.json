@@ -16,7 +16,6 @@
   "hideThinkingBlock": true,
   "lastChangelogVersion": "0.86.1",
   "packages": [
-    "npm:pi-mcp-adapter",
     "npm:@ifi/oh-pi-themes",
     "npm:pi-lmstudio",
     "npm:@tintinweb/pi-subagents",

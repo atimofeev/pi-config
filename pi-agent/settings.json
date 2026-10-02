@@ -51,6 +51,7 @@
     }
   },
   "autocompleteMaxVisible": 10,
+  "fullscreenWheelScrollLines": 5,
   "terminal": {
     "showTerminalProgress": false
   },

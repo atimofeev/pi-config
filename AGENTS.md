@@ -24,7 +24,7 @@ pi-agent/
   settings.json           # primary Pi runtime settings
   subagents.json          # subagent runtime defaults
   models.json             # custom model definitions
-  mcp.json                # MCP adapter settings and server overrides
+  mcp.json                # optional native Pi MCP file overrides
   caveman.json            # response-style configuration
   auth.json               # ignored credentials; sensitive
 ```
@@ -58,7 +58,9 @@ Use directory patterns and configuration files to discover current contents. Do 
 | Custom model definitions | `pi-agent/models.json` |
 | Agent inventory and per-agent model/tool policy | `pi-agent/agents/*.md` frontmatter |
 | Global subagent defaults | `pi-agent/subagents.json` |
-| MCP settings and server overrides | `pi-agent/mcp.json` |
+| Shared MCP connection definitions | External Home Manager `~/.config/mcp/mcp.json` |
+| Pi-only MCP exposure policy and shared importer | `pi-agent/extensions/shared-mcp.ts` |
+| Optional native MCP file overrides | `pi-agent/mcp.json` |
 | Local extension inventory and commands | `pi-agent/extensions/*.ts` |
 | Primary-agent prompt and delegation policy | `pi-agent/APPEND_SYSTEM.md` |
 | Helper behavior and exit status | executable under `pi-agent/bin/` |
@@ -121,7 +123,8 @@ When explicitly requested, add an agent only when repeated task needs distinct t
 
 - `settings.json` owns persistent Pi runtime settings and loaded packages.
 - `subagents.json` owns global subagent runtime defaults; project-local config may override it.
-- `mcp.json` owns Pi-specific MCP adapter settings and overrides. Shared/global server definitions may come from external system configuration; preserve layering instead of copying them here.
+- Shared MCP connection definitions come from external Home Manager `~/.config/mcp/mcp.json`. `pi-agent/extensions/shared-mcp.ts` respects `XDG_CONFIG_HOME`, imports through native `registerMcpServer`, and owns Pi-only exposure policy; it does not replace `/mcp`. `/reload` rereads shared configuration.
+- `pi-agent/mcp.json` is optional native file overrides, not the shared source. File definitions replace entire registered entries rather than merging fields. Session `/mcp` sees imported servers; shell `pi mcp list` does not load extensions and lists only file-defined servers. Use environment or command references for credentials, never literal secrets.
 - `models.json` owns custom provider/model definitions. Route selection must match available built-in or custom providers.
 - Response-style config belongs in its dedicated JSON file; prompt policy belongs in `APPEND_SYSTEM.md`.
 

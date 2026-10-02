@@ -6,6 +6,7 @@ pi-agent/cache/
 
 # Sensitive: auth tokens
 pi-agent/auth.json
+pi-agent/mcp-auth.json
 
 # Session data (conversation logs, run history)
 pi-agent/run-history.jsonl
@@ -28,6 +29,8 @@ pi-agent/projects-memory/
 pi-agent/mcp-cache.json
 pi-agent/mcp-npx-cache.json
 pi-agent/mcp-onboarding.json
+pi-agent/mcp.log
+pi-agent/mcp.log.1
 
 # Model discovery cache
 pi-agent/models-store.json

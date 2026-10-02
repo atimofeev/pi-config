@@ -14,7 +14,8 @@
     "amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   ],
   "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.86.1",
+  "quietStartup": "header",
+  "lastChangelogVersion": "1.0.0",
   "packages": [
     "npm:@ifi/oh-pi-themes",
     "npm:pi-lmstudio",

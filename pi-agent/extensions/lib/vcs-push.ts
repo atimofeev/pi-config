@@ -17,6 +17,13 @@ type Commit = { id: string; description: string; empty: boolean; conflict: boole
 type Bookmark = { name: string; remote: string; tracked: boolean; present: boolean; id: string };
 const lines = (text: string) => text.trim().split("\n").filter(Boolean);
 
+const subject = (description: string) => description.split(/[\r\n]/)[0].replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+const review = (destination: string, target: Pick<Commit, "id" | "description">, outgoing?: Pick<Commit, "id" | "description">[]) => [
+  `Destination: ${destination}`,
+  `Target: ${target.id.slice(0, 12)} ${subject(target.description)}`,
+  ...(outgoing ? [`Outgoing: ${outgoing.length} commits (oldest-first)`, ...outgoing.slice(0, 20).map(commit => `${commit.id.slice(0, 12)} ${subject(commit.description)}`), ...(outgoing.length > 20 ? [`... ${outgoing.length - 20} more commits`] : [])] : ["Outgoing count unavailable: remote bookmark not known locally."]),
+].join("\n");
+
 export function findJjRoot(cwd: string): string | undefined {
   for (let path = cwd; ; path = dirname(path)) {
     if (existsSync(join(path, ".jj"))) return path;
@@ -61,15 +68,28 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
         if (!destination.startsWith("refs/heads/") || destination.includes("\n")) throw new Error("Upstream must name exactly one branch ref");
         const dirty = await git(["status", "--porcelain"]);
         const head = await git(["rev-parse", "HEAD"]);
-        if (!await ctx.ui.confirm("Push Git branch", `${branch} (${head}) -> ${remote}:${destination}${upstream ? "" : "\nCreate upstream tracking."}${dirty ? "\nWorking-copy changes are ignored; no auto-commit." : ""}`)) return;
+        const remoteRef = `refs/remotes/${remote}/${destination.slice("refs/heads/".length)}`;
+        const readRemote = async () => {
+          const result = await run("git", ["rev-parse", "--verify", remoteRef], true);
+          return result.code === 0 && /^[0-9a-f]{40,64}$/.test(result.stdout.trim()) ? result.stdout.trim() : undefined;
+        };
+        const remoteId = await readRemote();
+        const gitCommits = async (rev: string) => lines(await git(["log", "--reverse", "--format=%H%x09%s", rev])).map(line => {
+          const [id, ...description] = line.split("\t");
+          return { id, description: description.join("\t") };
+        });
+        const targetSubject = await git(["show", "-s", "--format=%s", head]);
+        const readable = review(`${remote}/${destination.slice("refs/heads/".length)}`, { id: head, description: targetSubject }, remoteId ? await gitCommits(`${remoteId}..${head}`) : undefined);
+        if (!await ctx.ui.confirm("Push Git branch", `${readable}${upstream ? "" : "\nCreate upstream tracking."}${dirty ? "\nWorking-copy changes are ignored; no auto-commit." : ""}`)) return;
         if (await git(["symbolic-ref", "--quiet", "--short", "HEAD"]) !== branch || await git(["rev-parse", "HEAD"]) !== head || await git(["config", "--get", `branch.${branch}.remote`], true) !== remoteConfig || await git(["config", "--get", `branch.${branch}.merge`], true) !== merge) throw new Error("Git state changed during confirmation; retry /push");
+        if (remoteId && await readRemote() !== remoteId) throw new Error("Git remote-tracking ref changed during confirmation; retry /push");
         const output = await git(["push", "--no-follow-tags", ...(upstream ? [] : ["--set-upstream"]), "--", remote, `refs/heads/${branch}:${destination}`]);
-        ctx.ui.notify(output || "Push succeeded", "info");
+        ctx.ui.notify(`${readable}\n${output || "Push succeeded"}`, "info");
         return;
       }
       cwd = jjRoot;
       await jj(["root"]);
-      const commits = async (rev: string): Promise<Commit[]> => lines(await jj(["log", "--no-graph", "-r", rev, "-T", COMMIT_TEMPLATE])).map(line => {
+      const commits = async (rev: string, reversed = false): Promise<Commit[]> => lines(await jj(["log", "--no-graph", ...(reversed ? ["--reversed"] : []), "-r", rev, "-T", COMMIT_TEMPLATE])).map(line => {
         const [id, description, empty, conflict] = line.split("\t");
         return { id, description: JSON.parse(description), empty: empty === "true", conflict: conflict === "true" };
       });
@@ -106,9 +126,15 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
       const tracked = refs.filter(ref => ref.name === name && ref.remote && ref.tracked && remotes.includes(ref.remote)).map(ref => ref.remote);
       const remote = await choose("Remote", [...new Set(tracked.length ? tracked : remotes)]);
       if (!remote) return;
-      if (!await ctx.ui.confirm("Push Jujutsu bookmark", `${name}: ${bookmark.id} -> ${target.id}\n${target.description.trim()}\nRemote: ${remote}${useWorking ? "\nWorking-copy @ contents will be published." : ""}\nBookmark will move locally before push validation.`)) return;
+      const remoteRef = refs.find(ref => ref.name === name && ref.remote === remote && ref.present && /^[0-9a-f]{40,64}$/.test(ref.id));
+      const outgoing = remoteRef ? await commits(`${remoteRef.id}..${target.id}`, true) : undefined;
+      const excluded = remoteRef ? await commits(`${target.id}..${remoteRef.id}`, true) : [];
+      const readable = review(`${remote}/${name}`, target, outgoing) + (excluded.length ? `\nWarning: remote history excludes ${excluded.length} previous commits; native validation may reject this backwards/rewrite push.` : "");
+      if (!await ctx.ui.confirm("Push Jujutsu bookmark", `${readable}\nLocal bookmark: ${bookmark.id.slice(0, 12)} -> ${target.id.slice(0, 12)}${useWorking ? "\nWorking-copy @ contents will be published." : ""}\nBookmark will move locally before push validation.`)) return;
       const fresh = await resolveTarget();
-      const freshBookmark = (await bookmarks()).find(ref => !ref.remote && ref.name === name);
+      const freshRefs = await bookmarks();
+      if (remoteRef && !freshRefs.some(ref => ref.name === name && ref.remote === remote && ref.present && ref.id === remoteRef.id)) throw new Error("Remote bookmark changed during confirmation; retry /push");
+      const freshBookmark = freshRefs.find(ref => !ref.remote && ref.name === name);
       if (fresh.target.id !== target.id || fresh.useWorking !== useWorking || !freshBookmark?.present || freshBookmark.id !== bookmark.id) throw new Error("Target or bookmark changed during confirmation; retry /push");
       // Do not snapshot edits made after confirmation into the reviewed commit.
       const mutationFlags = ["--no-pager", "--color=never", "--ignore-working-copy"];
@@ -116,7 +142,7 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
       moved = true;
       const push = ["git", "push", "--remote", remote, "-b", `exact:${name}`];
       const preview = await run("jj", [...mutationFlags, ...push, "--dry-run"], true);
-      ctx.ui.notify([preview.stdout, preview.stderr].filter(Boolean).join("\n") || "Dry-run succeeded", preview.code ? "error" : "info");
+      ctx.ui.notify([...(preview.code ? [] : [readable]), preview.stdout, preview.stderr].filter(Boolean).join("\n") || "Dry-run succeeded", preview.code ? "error" : "info");
       if (preview.code) throw new Error("Jujutsu push dry-run failed");
       const reviewedRefs = await run("jj", [...mutationFlags, "bookmark", "list", "--all-remotes", "-T", BOOKMARK_TEMPLATE]);
       const reviewedBookmark = lines(reviewedRefs.stdout).find(line => {
@@ -125,7 +151,7 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
       });
       if (!reviewedBookmark) throw new Error("Bookmark changed after dry-run; retry /push");
       const result = await run("jj", [...mutationFlags, ...push]);
-      ctx.ui.notify([result.stdout, result.stderr].filter(Boolean).join("\n") || "Push succeeded", "info");
+      ctx.ui.notify(`${readable}\n${[result.stdout, result.stderr].filter(Boolean).join("\n") || "Push succeeded"}`, "info");
     } catch (error) {
       ctx.ui.notify(`${error instanceof Error ? error.message : String(error)}${moved ? "\nBookmark may now be moved locally; inspect before retrying. No automatic rollback." : ""}`, "error");
     } finally { busy = false; }

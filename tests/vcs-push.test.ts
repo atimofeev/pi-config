@@ -14,11 +14,11 @@ function fixture(jj = false, overrides: Record<string, string | number | (() => 
   let confirm = true, selection: string | undefined = undefined;
   let movedTo: string | undefined;
   let movedName = "main";
-  const defaults: Record<string, string> = jj ? {
-    root: "/repo", "log @": commit(), "log @-": commit(parent), nearest: commit(parent),
+  const defaults: Record<string, string | number> = jj ? {
+    outgoing: "", excluded: "", root: "/repo", "log @": commit(), "log @-": commit(parent), nearest: commit(parent),
     bookmarks: ref(), remotes: "origin https://example.invalid/repo", move: "", dry: "Would push", push: "Pushed",
   } : {
-    root: "/repo", branch: "main", remoteConfig: "origin", merge: "refs/heads/release", remotes: "origin", status: "", head: id, push: "Pushed",
+    remoteRef: 1, subject: "feat: change", outgoing: "", root: "/repo", branch: "main", remoteConfig: "origin", merge: "refs/heads/release", remotes: "origin", status: "", head: id, push: "Pushed",
   };
   const ctx: PushContext = { cwd: "/repo", hasUI: true, ui: {
     notify: message => { messages.push(message); },
@@ -31,11 +31,11 @@ function fixture(jj = false, overrides: Record<string, string | number | (() => 
     let key: string;
     if (command === "jj") {
       if (a[0] === "root") key = "root";
-      else if (a[0] === "log") { const rev = a[a.indexOf("-r") + 1]; key = rev.startsWith("heads(") ? "nearest" : `log ${rev}`; }
+      else if (a[0] === "log") { const rev = a[a.indexOf("-r") + 1]; key = rev.startsWith("heads(") ? "nearest" : rev.includes("..") ? (rev.startsWith(id) ? "excluded" : "outgoing") : `log ${rev}`; }
       else if (a[0] === "bookmark") key = a[1] === "list" ? "bookmarks" : "move";
       else key = a[1] === "remote" ? "remotes" : a.includes("--dry-run") ? "dry" : "push";
     } else {
-      key = a[0] === "symbolic-ref" ? "branch" : a[0] === "config" ? a[2].endsWith(".remote") ? "remoteConfig" : "merge" : a[0] === "remote" ? "remotes" : a[0] === "status" ? "status" : a[0] === "push" ? "push" : a.includes("HEAD") ? "head" : "root";
+      key = a[0] === "show" ? "subject" : a[0] === "log" ? "outgoing" : a.includes("--verify") ? "remoteRef" : a[0] === "symbolic-ref" ? "branch" : a[0] === "config" ? a[2].endsWith(".remote") ? "remoteConfig" : "merge" : a[0] === "remote" ? "remotes" : a[0] === "status" ? "status" : a[0] === "push" ? "push" : a.includes("HEAD") ? "head" : "root";
     }
     if (key === "move") {
       movedTo = a.at(-1);
@@ -159,7 +159,7 @@ async function nativeExec(command: string, args: string[], options: { cwd: strin
   }
 }
 async function sandbox(t: TestContext) {
-  const base = "/tmp/pi-coding-agent/push";
+  const base = "/tmp/pi-coding-agent/push-review-ux/";
   await mkdir(base, { recursive: true });
   const root = await mkdtemp(join(base, "test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -197,7 +197,7 @@ test("Local Git pushes new slash branch with upstream, then differently-named de
   await s.run("git", ["config", "branch.topic/slash.merge", "refs/heads/release/destination"]);
   await handler("", s.ctx);
   assert.equal(await s.run("git", ["--git-dir", s.remote, "rev-parse", "refs/heads/release/destination"]), head);
-  assert.match(s.confirmations[1], /origin:refs\/heads\/release\/destination/);
+  assert.match(s.confirmations[1], /Destination: origin\/release\/destination/);
 });
 
 for (const emptyChild of [true, false]) {
@@ -232,5 +232,104 @@ for (const emptyChild of [true, false]) {
     assert.equal(await s.run("git", ["--git-dir", s.remote, "show", "refs/heads/topic/slash:file"], s.remote), "reviewed");
     assert.equal(s.confirmations[0].includes("@ contents will be published"), !emptyChild);
     assert.notEqual(await jj(["log", "--no-graph", "-r", "@", "-T", "commit_id"]), reviewed);
+  });
+}
+
+for (const jj of [true, false]) {
+  test(`${jj ? "JJ" : "Git"} readable remote-based six-commit review, oldest-first`, async () => {
+    const subjects = Array.from({ length: 6 }, (_, i) => `feat: human change ${i + 1}`);
+    const hashes = subjects.map((_, i) => (i + 1).toString(16).repeat(40));
+    const history = subjects.map((text, i) => jj ? commit(hashes[i], `${text}\nprivate body`) : `${hashes[i]}\t${text}`).join("\n");
+    const f = fixture(jj, { bookmarks: `${ref("main", "", id)}\n${ref("main", "origin", parent, true)}`, remoteRef: parent, nearest: commit(id), outgoing: history, "log @": commit(id, "target\u001b subject\nprivate body") });
+    await f.handler("", f.ctx);
+    assert.match(f.confirms[0], /Outgoing: 6 commits/);
+    assert.match(f.confirms[0], new RegExp(`Destination: origin/${jj ? "main" : "release"}`));
+    let previous = -1;
+    for (const text of subjects) { const index = f.confirms[0].indexOf(text); assert.ok(index > previous); previous = index; }
+    assert.doesNotMatch(f.confirms[0], /private body|\u001b/);
+    const log = f.calls.find(c => c.includes(`${parent}..${id}`));
+    assert.ok(log); assert.ok(log.includes(jj ? "--reversed" : "--reverse"));
+    if (jj) { assert.match(f.messages[0], /Outgoing: 6 commits/); assert.match(f.messages[0], /Would push/); }
+    const final = f.messages.at(-1)!;
+    assert.match(final, new RegExp(`Destination: origin/${jj ? "main" : "release"}`));
+    assert.match(final, /Outgoing: 6 commits/);
+    for (const text of subjects) assert.ok(final.includes(text));
+  });
+  test(`${jj ? "JJ" : "Git"} unknown remote and explicit history omission`, async () => {
+    const unknown = fixture(jj); await unknown.handler("", unknown.ctx);
+    assert.match(unknown.confirms[0], /Outgoing count unavailable/);
+    assert.match(unknown.confirms[0], /Target: aaaaaaaaaaaa feat: change/);
+    assert.doesNotMatch(unknown.confirms[0], /Outgoing: 0/);
+    const history = Array.from({ length: 23 }, (_, i) => jj ? commit(parent, `subject ${i}`) : `${parent}\tsubject ${i}`).join("\n");
+    const f = fixture(jj, { bookmarks: `${ref()}\n${ref("main", "origin", parent, true)}`, remoteRef: parent, outgoing: history });
+    await f.handler("", f.ctx);
+    assert.match(f.confirms[0], /Outgoing: 23 commits/); assert.match(f.confirms[0], /\.\.\. 3 more commits/);
+    assert.match(f.confirms[0], /subject 19/); assert.doesNotMatch(f.confirms[0], /subject 20/);
+  });
+  test(`${jj ? "JJ" : "Git"} reviewed remote changes or disappears during confirmation refuses mutation`, async () => {
+    for (const removed of [false, true]) {
+      const f = fixture(jj, { bookmarks: `${ref()}\n${ref("main", "origin", parent, true)}`, remoteRef: parent });
+      const original = f.ctx.ui.confirm;
+      let changed = false;
+      // Mock reads share this closure; switch state only while confirmation is open.
+      const g = fixture(jj, {
+        bookmarks: () => `${ref()}${changed ? removed ? "" : `\n${ref("main", "origin", id, true)}` : `\n${ref("main", "origin", parent, true)}`}`,
+        remoteRef: () => changed ? removed ? "" : id : parent,
+      });
+      g.ctx.ui.confirm = async (...args) => { await original(...args); changed = true; return true; };
+      await g.handler("", g.ctx);
+      assert.equal(mutations(g).length, 0); assert.match(g.messages.join(), /changed during confirmation/);
+    }
+  });
+}
+
+test("JJ backwards/rewrite review warns without force or validation bypass", async () => {
+  const f = fixture(true, { bookmarks: `${ref()}\n${ref("main", "origin", parent, true)}`, excluded: `${commit(parent)}\n${commit("c".repeat(40))}` });
+  await f.handler("", f.ctx);
+  assert.match(f.confirms[0], /remote history excludes 2 previous commits; native validation may reject/);
+  assert.match(f.messages[0], /remote history excludes 2 previous commits/);
+  assert.ok(f.calls.every(c => !c.some(arg => /force|allow/.test(arg))));
+});
+
+for (const useJj of [true, false]) {
+  test(`Local ${useJj ? "JJ" : "Git"} remote base plus two new commits reviews exactly two subjects`, async t => {
+    const s = await sandbox(t);
+    const jj = (args: string[]) => s.run("jj", ["--no-pager", "--color=never", "--config", "user.name=Push Test", "--config", "user.email=push@example.invalid", ...args]);
+    if (useJj) {
+      await jj(["git", "init"]);
+      await writeFile(join(s.repo, "file"), "base\n");
+      await jj(["describe", "-m", "base must not appear"]);
+      await jj(["bookmark", "create", "main", "-r", "@"]);
+      await jj(["git", "remote", "add", "origin", s.remote]);
+      await jj(["git", "push", "--remote", "origin", "-b", "main"]);
+      for (const text of ["first outgoing subject", "second outgoing subject"]) {
+        await jj(["new", ...(text.startsWith("first") ? ["-r", "main"] : []), "-m", `${text}\n\nbody must not appear`]);
+        await writeFile(join(s.repo, "file"), `${text}\n`);
+      }
+      // Local bookmark already moved: preview must still compare against remote base.
+      await jj(["bookmark", "move", "main", "--to", "@"]);
+    } else {
+      await s.run("git", ["init", "-b", "main"]);
+      await s.run("git", ["remote", "add", "origin", s.remote]);
+      for (const text of ["base must not appear", "first outgoing subject", "second outgoing subject"]) {
+        await writeFile(join(s.repo, "file"), `${text}\n`);
+        await s.run("git", ["add", "file"]);
+        await s.run("git", ["commit", "-m", `${text}\n\nbody must not appear`]);
+        if (text.startsWith("base")) await s.run("git", ["push", "-u", "origin", "main"]);
+      }
+    }
+    const handler = createPushHandler(async (command, args, options) => nativeExec(command, command === "jj" ? ["--config", "user.name=Push Test", "--config", "user.email=push@example.invalid", ...args] : args, options));
+    await handler("", s.ctx);
+    const text = s.confirmations[0];
+    assert.match(text, /Outgoing: 2 commits/);
+    assert.match(text, /first outgoing subject/); assert.match(text, /second outgoing subject/);
+    assert.ok(text.indexOf("first outgoing subject") < text.lastIndexOf("second outgoing subject"));
+    assert.doesNotMatch(text, /base must not appear|body must not appear/);
+    assert.doesNotMatch(s.messages.join("\n"), /failed|changed during confirmation/);
+    if (useJj) assert.match(s.messages[0], /Outgoing: 2 commits/);
+    const final = s.messages.at(-1)!;
+    assert.match(final, /Destination: origin\/main/);
+    assert.match(final, /Outgoing: 2 commits/);
+    assert.match(final, /first outgoing subject/); assert.match(final, /second outgoing subject/);
   });
 }

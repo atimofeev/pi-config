@@ -1,11 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import {
-  fetchWithCache as fetchCodexUsage,
   renderFooterCodexBar,
   type CodexUsageData,
 } from "./pi-codex-bars.ts";
-import { resolveJjBookmark } from "./jj-footer.ts";
+import { parseCodexUsageHeaders } from "./lib/codex-usage.ts";
+import { resolveJjBookmark } from "./vcs-jj-footer.ts";
 import {
   fetchWithCache as fetchGoUsage,
   formatDuration,
@@ -153,28 +153,15 @@ export default function (pi: ExtensionAPI) {
   let tuiRef: any = null;
   let setupTimer: ReturnType<typeof setTimeout> | null = null;
   let usagePollTimer: ReturnType<typeof setInterval> | null = null;
-  let codexPollInFlight: Promise<void> | null = null;
   let goPollInFlight: Promise<void> | null = null;
 
   function clearBackend(): void {
+    codexUsage.data = null;
     backend.servedGroup = undefined;
     backend.servedModel = undefined;
     backend.apiBase = undefined;
     backend.fallbacks = 0;
     backend.usageKind = null;
-  }
-
-  async function pollCodexUsage(): Promise<void> {
-    if (codexPollInFlight) return codexPollInFlight;
-    codexUsage.loading = !codexUsage.data;
-    codexPollInFlight = fetchCodexUsage()
-      .then((data) => { codexUsage.data = data; })
-      .finally(() => {
-        codexUsage.loading = false;
-        codexPollInFlight = null;
-        tuiRef?.requestRender();
-      });
-    return codexPollInFlight;
   }
 
   async function pollGoUsage(): Promise<void> {
@@ -194,11 +181,7 @@ export default function (pi: ExtensionAPI) {
     if (usagePollTimer) clearInterval(usagePollTimer);
     usagePollTimer = null;
 
-    const poll = backend.usageKind === "codex"
-      ? pollCodexUsage
-      : backend.usageKind === "go"
-        ? pollGoUsage
-        : null;
+    const poll = backend.usageKind === "go" ? pollGoUsage : null;
     if (!poll) return;
 
     void poll();
@@ -308,6 +291,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   pi.on("session_start", (_event, ctx) => {
+    clearBackend();
     if (!isLiteLLM(ctx.model)) return;
     thinkingLevel = pi.getThinkingLevel?.() ?? "off";
     cancelSetupTimer();
@@ -320,6 +304,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("after_provider_response", (event, ctx) => {
+    codexUsage.data = null;
     if (!isLiteLLM(ctx.model)) return;
     if (event.status < 200 || event.status >= 300) {
       clearBackend();
@@ -328,7 +313,8 @@ export default function (pi: ExtensionAPI) {
       backend.servedModel = header(event.headers, "x-litellm-model-name");
       backend.apiBase = header(event.headers, "x-litellm-model-api-base");
       backend.fallbacks = fallbackCount(event.headers);
-      backend.usageKind = classifyUsage(backend.servedGroup, backend.servedModel, backend.apiBase);
+      codexUsage.data = parseCodexUsageHeaders(event.headers);
+      backend.usageKind = codexUsage.data ? "codex" : classifyUsage(backend.servedGroup, backend.servedModel, backend.apiBase);
     }
     updateUsagePolling();
     tuiRef?.requestRender();
@@ -361,6 +347,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", (_event, ctx) => {
+    clearBackend();
     cancelSetupTimer();
     if (usagePollTimer) clearInterval(usagePollTimer);
     usagePollTimer = null;

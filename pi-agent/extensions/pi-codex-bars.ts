@@ -18,146 +18,15 @@ import {
   type Component,
   type Focusable,
 } from "@earendil-works/pi-tui";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
-import { resolveJjBookmark } from "./jj-footer.ts";
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Types
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface CodexUsageWindow {
-  usedPercent: number;
-  resetsAt: number | null;
-}
-
-export interface CodexUsageData {
-  usage: { primary: CodexUsageWindow | null; secondary: CodexUsageWindow | null } | null;
-  error?: string;
-  stale?: boolean;
-  warning?: string;
-  fetchedAt?: number;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Auth
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const AUTH_FILE = path.join(os.homedir(), ".pi", "agent", "auth.json");
-
-function readCodexToken(): string | null {
-  try {
-    const raw = fs.readFileSync(AUTH_FILE, "utf-8");
-    const auth = JSON.parse(raw) as Record<string, any>;
-    return auth?.["openai-codex"]?.access || null;
-  } catch {
-    return null;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Cache
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const CACHE_TTL_MS = 90_000;
-const CACHE_FILE = path.join(os.tmpdir(), "pi", "pi-codex-bars-v2-cache.json");
-
-function readCache(): CodexUsageData | null {
-  try {
-    const raw = fs.readFileSync(CACHE_FILE, "utf-8");
-    const entry = JSON.parse(raw) as { data: CodexUsageData; ts: number };
-    if (entry?.data && typeof entry.ts === "number") return entry.data;
-  } catch { /* ignore */ }
-  return null;
-}
-
-function writeCache(data: CodexUsageData): void {
-  try {
-    const dir = path.dirname(CACHE_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    const tmp = `${CACHE_FILE}.tmp-${process.pid}`;
-    fs.writeFileSync(tmp, JSON.stringify({ data, ts: Date.now() }));
-    fs.chmodSync(tmp, 0o600);
-    fs.renameSync(tmp, CACHE_FILE);
-  } catch { /* ignore */ }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Fetch
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const CODX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
-const FETCH_TIMEOUT_MS = 12_000;
-
-async function fetchCodexUsage(token: string): Promise<CodexUsageData> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const resp = await fetch(CODX_USAGE_URL, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    });
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
-    }
-    const data = await resp.json() as any;
-    const rateLimit = data?.rate_limit ?? null;
-    const primaryRaw = rateLimit?.primary_window ?? rateLimit?.primary;
-    const secondaryRaw = rateLimit?.secondary_window ?? rateLimit?.secondary;
-    let primary = parseWindow(primaryRaw);
-    let secondary = parseWindow(secondaryRaw);
-    if (!secondary && primary && windowMinutes(primaryRaw) === WEEKLY_WINDOW_MINUTES) {
-      secondary = primary;
-      primary = null;
-    }
-    return {
-      usage: { primary, secondary },
-      fetchedAt: Date.now(),
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export async function fetchWithCache(): Promise<CodexUsageData> {
-  const token = readCodexToken();
-  if (!token) return { usage: null, error: "no Codex auth (run /login)" };
-  const cached = readCache();
-  if (cached && Date.now() - (cached.fetchedAt ?? 0) < CACHE_TTL_MS) return cached;
-  try {
-    const data = await fetchCodexUsage(token);
-    writeCache(data);
-    return data;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const stale = readCache();
-    if (stale) return { ...stale, stale: true, warning: `stale (${msg})` };
-    return { usage: null, error: msg };
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Formatting helpers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const WEEKLY_WINDOW_MINUTES = 7 * 24 * 60;
-
-function parseWindow(raw: any): CodexUsageWindow | null {
-  if (!raw || typeof raw !== "object") return null;
-  const usedPercent = typeof raw.used_percent === "number" ? raw.used_percent : 0;
-  const resetsAt = typeof raw.resets_at === "number"
-    ? raw.resets_at
-    : (typeof raw.reset_at === "number" ? raw.reset_at : null);
-  return { usedPercent, resetsAt };
-}
-
-function windowMinutes(raw: any): number | null {
-  if (!raw || typeof raw !== "object") return null;
-  if (typeof raw.window_minutes === "number") return raw.window_minutes;
-  if (typeof raw.limit_window_seconds === "number") return Math.ceil(raw.limit_window_seconds / 60);
-  return null;
-}
+import { resolveJjBookmark } from "./vcs-jj-footer.ts";
+import {
+  parseCodexUsageHeaders,
+  parseCodexUsageEvent,
+  isCodexUsageEvent,
+  codexWindowLabel,
+  type CodexUsageData,
+} from "./lib/codex-usage.ts";
+export type { CodexUsageData } from "./lib/codex-usage.ts";
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -223,8 +92,8 @@ interface Win {
 
 function usageWins(data: CodexUsageData): Win[] {
   const wins: Win[] = [];
-  if (data.usage?.primary) wins.push({ label: "5h", pct: data.usage.primary.usedPercent, resetsAt: data.usage.primary.resetsAt });
-  if (data.usage?.secondary) wins.push({ label: "7d", pct: data.usage.secondary.usedPercent, resetsAt: data.usage.secondary.resetsAt });
+  if (data.usage?.primary) wins.push({ label: codexWindowLabel(data.usage.primary, "5h"), pct: data.usage.primary.usedPercent, resetsAt: data.usage.primary.resetsAt });
+  if (data.usage?.secondary) wins.push({ label: codexWindowLabel(data.usage.secondary, "7d"), pct: data.usage.secondary.usedPercent, resetsAt: data.usage.secondary.resetsAt });
   return wins;
 }
 
@@ -316,6 +185,7 @@ function buildDetailOverlay(
   data: CodexUsageData | null,
   loading: boolean,
   done: () => void,
+  lastResponseAt: number | null,
 ): Container & Focusable {
   const t = theme;
   const comp = new Container() as Container & Focusable;
@@ -329,7 +199,8 @@ function buildDetailOverlay(
   if (loading) {
     lines.push(t.fg("dim", "Loading\u2026"));
   } else if (!data) {
-    lines.push(t.fg("dim", "No data"));
+    lines.push(t.fg("dim", "No quota headers yet. Quota refreshes after model responses."));
+    lines.push(t.fg("dim", "LiteLLM must forward provider quota headers."));
   } else if (data.error) {
     lines.push(t.fg("error", data.error));
   } else {
@@ -358,6 +229,8 @@ function buildDetailOverlay(
     }
   }
 
+  lines.push(t.fg("dim", `Last response: ${lastResponseAt === null ? "none" : new Date(lastResponseAt).toISOString()}`));
+  lines.push(t.fg("dim", "Snapshot only; refreshes after model responses."));
   lines.push(t.fg("dim", "Press any key to close"));
 
   for (const line of lines) comp.addChild(new Text(line, 0, 0));
@@ -367,8 +240,6 @@ function buildDetailOverlay(
 // ═══════════════════════════════════════════════════════════════════════════════
 // Extension entry point
 // ═══════════════════════════════════════════════════════════════════════════════
-
-const POLL_INTERVAL_MS = 60_000;
 
 function isCodexModel(model: { provider: string } | undefined | null): boolean {
   return model?.provider === "openai-codex";
@@ -403,30 +274,13 @@ function restoreCodexAdapterStatus(ctx: any) {
 }
 
 export default function (pi: ExtensionAPI) {
-  const state = { data: null as CodexUsageData | null, loading: true };
+  const state = { data: null as CodexUsageData | null, loading: false };
 
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
-  let pollInFlight: Promise<void> | null = null;
-  let pollQueued = false;
+  let lastResponseAt: number | null = null;
   let footerActive = false;
   let setupTimer: ReturnType<typeof setTimeout> | null = null;
   let tuiRef: any = null;
   let thinkingLevel = "off";
-
-  // ── Polling ─────────────────────────────────────────────────────────────
-
-  async function runPoll() {
-    state.data = await fetchWithCache();
-  }
-
-  async function poll() {
-    if (pollInFlight) { pollQueued = true; await pollInFlight; return; }
-    do {
-      pollQueued = false;
-      pollInFlight = runPoll().finally(() => { pollInFlight = null; state.loading = false; });
-      await pollInFlight;
-    } while (pollQueued);
-  }
 
   // ── Footer ──────────────────────────────────────────────────────────────
 
@@ -565,20 +419,41 @@ export default function (pi: ExtensionAPI) {
   // ── Lifecycle ──────────────────────────────────────────────────────────
 
   pi.on("session_start", async (_event, _ctx) => {
+    state.data = null;
+    lastResponseAt = null;
     if (!isCodexModel(_ctx.model)) return;
     thinkingLevel = pi.getThinkingLevel?.() ?? "off";
     setupFooter(_ctx);
-    await poll();
     tuiRef?.requestRender();
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(() => { void poll().then(() => tuiRef?.requestRender()); }, POLL_INTERVAL_MS);
   });
 
   pi.on("turn_start", async (_event, _ctx) => {
     if (isCodexModel(_ctx.model)) suppressCodexAdapterStatus(_ctx);
   });
 
+  pi.on("provider_stream_event", (event, ctx) => {
+    if (event.provider !== "openai-codex" || !isCodexModel(ctx.model) || !isCodexUsageEvent(event.data)) return;
+    lastResponseAt = Date.now();
+    state.data = parseCodexUsageEvent(event.data, lastResponseAt);
+    tuiRef?.requestRender();
+  });
+
+  pi.on("after_provider_response", (event, ctx) => {
+    state.data = null;
+    lastResponseAt = null;
+    if (ctx.model?.provider === "openai-codex" || ctx.model?.provider === "litellm") {
+      lastResponseAt = Date.now();
+      if (event.status >= 200 && event.status < 300) {
+        state.data = parseCodexUsageHeaders(event.headers, lastResponseAt);
+      }
+    }
+    tuiRef?.requestRender();
+  });
+
   pi.on("model_select", async (_event, _ctx) => {
+    state.data = null;
+    lastResponseAt = null;
+    tuiRef?.requestRender();
     if (!isCodexModel(_event.model)) {
       // Always release Codex ownership on non-Codex model.
       cancelSetupTimer();
@@ -589,7 +464,6 @@ export default function (pi: ExtensionAPI) {
         try { _ctx?.ui?.setFooter(undefined); } catch { /* ignore */ }
       }
       restoreCodexAdapterStatus(_ctx);
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       return;
     }
     // Defer setup so pi-go-bars clears its footer first (runs before our timer).
@@ -600,10 +474,7 @@ export default function (pi: ExtensionAPI) {
       if (footerActive) return;
       thinkingLevel = pi.getThinkingLevel?.() ?? "off";
       setupFooter(_ctx);
-      if (!state.data || state.loading) { poll(); }
       tuiRef?.requestRender();
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(() => { void poll().then(() => tuiRef?.requestRender()); }, POLL_INTERVAL_MS);
     }, 0);
   });
 
@@ -613,8 +484,9 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async (_event, _ctx) => {
+    state.data = null;
+    lastResponseAt = null;
     cancelSetupTimer();
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     clearFooter(_ctx);
     restoreCodexAdapterStatus(_ctx);
   });
@@ -628,11 +500,10 @@ export default function (pi: ExtensionAPI) {
         if (_ctx.ui) {
           await _ctx.ui.custom(
             (_tui: any, theme: any, _kb: any, done: any) =>
-              buildDetailOverlay(theme, state.data, state.loading, done),
+              buildDetailOverlay(theme, state.data, state.loading, done, lastResponseAt),
           );
         }
       } catch { /* ignore */ }
-      await poll();
       tuiRef?.requestRender();
     },
   });

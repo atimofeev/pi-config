@@ -1,10 +1,10 @@
 /**
- * git-tag extension — summarize commits since last tag, edit message,
+ * tag extension — summarize commits since last tag, edit message,
  * create annotated tag, and push.
  *
  * Usage:
- *   /git-tag              auto-bumps patch version
- *   /git-tag 0.4.0        specify version explicitly
+ *   /tag              auto-bumps patch version
+ *   /tag 0.4.0        specify version explicitly
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -30,13 +30,13 @@ Rules:
 // ── main command ─────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("git-tag", {
+  pi.registerCommand("tag", {
     description: "Summarize commits since last tag, edit, create & push annotated tag",
     argumentHint: "[version]",
 
     async handler(args, ctx) {
       if (!ctx.hasUI) {
-        ctx.ui.notify("git-tag needs interactive mode", "error");
+        ctx.ui.notify("tag needs interactive mode", "error");
         return;
       }
       if (!ctx.model) {

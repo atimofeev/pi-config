@@ -137,6 +137,7 @@ When explicitly requested, add an agent only when repeated task needs distinct t
 ## Extensions and scripts
 
 - Local TUI extensions are auto-discovered from `pi-agent/extensions/*.ts`. Read registrations for current command and UI behavior.
+- Name VCS extensions `vcs-<purpose>.ts`; keep non-entry helpers under `pi-agent/extensions/lib/vcs-*.ts`. Filenames do not dictate slash-command names.
 - `subagent-context.ts` injects bounded working-directory, VCS, and applicable `AGENTS.md` context into replace-mode subagents that allowlist it.
 - Extension dependencies belong in runtime package configuration, not ad hoc vendored copies.
 - Local Pi extensions use current `@earendil-works` Pi API packages; follow existing imports.

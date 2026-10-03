@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Box, Spacer, Text } from "@earendil-works/pi-tui";
+import { createPushHandler } from "./lib/vcs-push.ts";
 
 type VcsEntry = {
   vcs: "jj" | "git";
@@ -14,6 +15,11 @@ const ANSI_RESET_EXCEPT_BACKGROUND = "\x1b[22;23;24;25;27;28;29;39m";
 const DIFF_METADATA = /^(?:diff --git |(?:old|new|deleted file|new file) mode |(?:dis)?similarity index |(?:rename|copy) (?:from|to) |index |--- |\+\+\+ )/;
 
 export default function (pi: ExtensionAPI) {
+  pi.registerCommand("push", {
+    description: "Push current Git branch or nearest Jujutsu bookmark",
+    argumentHint: "[bookmark]",
+    handler: createPushHandler((command, args, options) => pi.exec(command, args, options)),
+  });
   registerVcsRenderer(pi, "vcs-diff", "diff", true);
   registerVcsRenderer(pi, "vcs-status", "status");
 

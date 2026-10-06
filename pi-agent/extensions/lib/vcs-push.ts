@@ -6,18 +6,27 @@ export type PushContext = {
   cwd: string;
   hasUI: boolean;
   ui: {
+    theme?: { fg(color: "accent" | "text", text: string): string };
     select(title: string, options: string[]): Promise<string | undefined>;
     confirm(title: string, message: string): Promise<boolean>;
     notify(message: string, level: "info" | "warning" | "error"): void;
   };
 };
+export type PushEntry = { title: "Bookmark moved:" | "Pushed"; vcs: "jj" | "git"; commit?: { id: string; description: string }; name?: string };
+const sanitize = (text: string) => text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+export function formatPushCommit(commit: { id: string; description: string }, marker = "", accent: (text: string) => string = text => text): string {
+  return `${sanitize(commit.id).slice(0, 12)} ${subject(commit.description)}${marker ? ` ${accent(sanitize(marker))}` : ""}`;
+}
+export function formatPushEntry(entry: PushEntry, accent: (text: string) => string = text => text): string {
+  return entry.title + (entry.commit ? `\n${formatPushCommit(entry.commit, entry.name ? entry.vcs === "jj" ? `<- ${entry.name}` : `(${entry.name})` : "", accent)}` : "");
+}
 const COMMIT_TEMPLATE = 'commit_id ++ "\\t" ++ description.escape_json() ++ "\\t" ++ empty ++ "\\t" ++ conflict ++ "\\n"';
 const BOOKMARK_TEMPLATE = 'self.name().escape_json() ++ "\\t" ++ if(self.remote(), self.remote().escape_json(), "\\"\\"") ++ "\\t" ++ self.tracked() ++ "\\t" ++ self.present() ++ "\\t" ++ if(self.normal_target(), self.normal_target().commit_id(), "") ++ "\\n"';
 type Commit = { id: string; description: string; empty: boolean; conflict: boolean };
 type Bookmark = { name: string; remote: string; tracked: boolean; present: boolean; id: string };
 const lines = (text: string) => text.trim().split("\n").filter(Boolean);
 
-const subject = (description: string) => description.split(/[\r\n]/)[0].replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+const subject = (description: string) => sanitize(description.split(/[\r\n]/)[0]);
 const review = (destination: string, target: Pick<Commit, "id" | "description">, outgoing?: Pick<Commit, "id" | "description">[]) => [
   `Destination: ${destination}`,
   `Target: ${target.id.slice(0, 12)} ${subject(target.description)}`,
@@ -31,13 +40,18 @@ export function findJjRoot(cwd: string): string | undefined {
   }
 }
 
-export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
+export function createPushHandler(exec: PushExec, detectJj = findJjRoot, emitEntry?: (entry: PushEntry) => void) {
   let busy = false;
   return async (args: string, ctx: PushContext): Promise<void> => {
     if (!ctx.hasUI) { ctx.ui.notify("/push requires interactive UI", "error"); return; }
     if (busy) { ctx.ui.notify("Push already in progress", "warning"); return; }
     busy = true;
     let moved = false;
+    const emit = (entry: PushEntry) => {
+      const clean = { ...entry, ...(entry.name !== undefined ? { name: sanitize(entry.name) } : {}), ...(entry.commit ? { commit: { id: sanitize(entry.commit.id), description: subject(entry.commit.description) } } : {}) };
+      if (emitEntry) emitEntry(clean);
+      else ctx.ui.notify(formatPushEntry(clean), "info");
+    };
     try {
       let cwd = ctx.cwd;
       const run = async (command: string, argv: string[], optional = false) => {
@@ -83,13 +97,13 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
         if (!await ctx.ui.confirm("Push Git branch", `${readable}${upstream ? "" : "\nCreate upstream tracking."}${dirty ? "\nWorking-copy changes are ignored; no auto-commit." : ""}`)) return;
         if (await git(["symbolic-ref", "--quiet", "--short", "HEAD"]) !== branch || await git(["rev-parse", "HEAD"]) !== head || await git(["config", "--get", `branch.${branch}.remote`], true) !== remoteConfig || await git(["config", "--get", `branch.${branch}.merge`], true) !== merge) throw new Error("Git state changed during confirmation; retry /push");
         if (remoteId && await readRemote() !== remoteId) throw new Error("Git remote-tracking ref changed during confirmation; retry /push");
-        const output = await git(["push", "--no-follow-tags", ...(upstream ? [] : ["--set-upstream"]), "--", remote, `refs/heads/${branch}:${destination}`]);
-        ctx.ui.notify(`${readable}\n${output || "Push succeeded"}`, "info");
+        await git(["push", "--no-follow-tags", ...(upstream ? [] : ["--set-upstream"]), "--", remote, `refs/heads/${branch}:${destination}`]);
+        emit({ title: "Pushed", vcs: "git", commit: { id: head, description: targetSubject }, name: branch });
         return;
       }
       cwd = jjRoot;
       await jj(["root"]);
-      const commits = async (rev: string, reversed = false): Promise<Commit[]> => lines(await jj(["log", "--no-graph", ...(reversed ? ["--reversed"] : []), "-r", rev, "-T", COMMIT_TEMPLATE])).map(line => {
+      const commits = async (rev: string, reversed = false, latest = false): Promise<Commit[]> => lines(await jj(["log", "--no-graph", ...(reversed ? ["--reversed"] : []), ...(latest ? ["-n", "10"] : []), "-r", rev, "-T", COMMIT_TEMPLATE])).map(line => {
         const [id, description, empty, conflict] = line.split("\t");
         return { id, description: JSON.parse(description), empty: empty === "true", conflict: conflict === "true" };
       });
@@ -129,8 +143,23 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
       const remoteRef = refs.find(ref => ref.name === name && ref.remote === remote && ref.present && /^[0-9a-f]{40,64}$/.test(ref.id));
       const outgoing = remoteRef ? await commits(`${remoteRef.id}..${target.id}`, true) : undefined;
       const excluded = remoteRef ? await commits(`${target.id}..${remoteRef.id}`, true) : [];
-      const readable = review(`${remote}/${name}`, target, outgoing) + (excluded.length ? `\nWarning: remote history excludes ${excluded.length} previous commits; native validation may reject this backwards/rewrite push.` : "");
-      if (!await ctx.ui.confirm("Push Jujutsu bookmark", `${readable}\nLocal bookmark: ${bookmark.id.slice(0, 12)} -> ${target.id.slice(0, 12)}${useWorking ? "\nWorking-copy @ contents will be published." : ""}\nBookmark will move locally before push validation.`)) return;
+      const ancestry = (await commits(`::${target.id}`, false, true)).filter(commit => !/^0+$/.test(commit.id));
+      const history = [target, ...ancestry.filter(commit => commit.id !== target.id)].slice(0, 10);
+      const accent = (text: string) => ctx.ui.theme?.fg("accent", text) ?? text;
+      const old = bookmark.id !== target.id;
+      const readable = [
+        ...history.map(commit => {
+          const row = formatPushCommit(commit, commit.id === target.id ? `<- ${name}` : old && commit.id === bookmark.id ? `- ${name} (old)` : "", accent);
+          return ctx.ui.theme?.fg("text", row) ?? row;
+        }),
+        ...(old && !history.some(commit => commit.id === bookmark.id) ? [`Old tip outside displayed ancestry: ${sanitize(bookmark.id).slice(0, 12)} ${sanitize(name)} (old)`] : []),
+        `Destination: ${sanitize(remote)}/${sanitize(name)}`,
+        outgoing ? `Outgoing: ${outgoing.length} commits` : "Outgoing count unavailable: remote bookmark not known locally.",
+        ...(excluded.length ? [`Warning: remote history excludes ${excluded.length} previous commits; native validation may reject this backwards/rewrite push.`] : []),
+        ...(useWorking ? ["Working-copy @ contents will be published."] : []),
+        "Bookmark will move locally before push validation.",
+      ].join("\n");
+      if (!await ctx.ui.confirm("Bookmark will move:", readable)) return;
       const fresh = await resolveTarget();
       const freshRefs = await bookmarks();
       if (remoteRef && !freshRefs.some(ref => ref.name === name && ref.remote === remote && ref.present && ref.id === remoteRef.id)) throw new Error("Remote bookmark changed during confirmation; retry /push");
@@ -140,9 +169,10 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
       const mutationFlags = ["--no-pager", "--color=never", "--ignore-working-copy"];
       await run("jj", [...mutationFlags, "bookmark", "move", `exact:${name}`, "--to", target.id]);
       moved = true;
+      emit({ title: "Bookmark moved:", vcs: "jj", commit: target, name });
       const push = ["git", "push", "--remote", remote, "-b", `exact:${name}`];
       const preview = await run("jj", [...mutationFlags, ...push, "--dry-run"], true);
-      ctx.ui.notify([...(preview.code ? [] : [readable]), preview.stdout, preview.stderr].filter(Boolean).join("\n") || "Dry-run succeeded", preview.code ? "error" : "info");
+      if (preview.code) ctx.ui.notify([preview.stdout, preview.stderr].filter(Boolean).join("\n") || "Dry-run failed", "error");
       if (preview.code) throw new Error("Jujutsu push dry-run failed");
       const reviewedRefs = await run("jj", [...mutationFlags, "bookmark", "list", "--all-remotes", "-T", BOOKMARK_TEMPLATE]);
       const reviewedBookmark = lines(reviewedRefs.stdout).find(line => {
@@ -150,8 +180,8 @@ export function createPushHandler(exec: PushExec, detectJj = findJjRoot) {
         return JSON.parse(refName) === name && JSON.parse(refRemote) === "" && present === "true" && id === target.id;
       });
       if (!reviewedBookmark) throw new Error("Bookmark changed after dry-run; retry /push");
-      const result = await run("jj", [...mutationFlags, ...push]);
-      ctx.ui.notify(`${readable}\n${[result.stdout, result.stderr].filter(Boolean).join("\n") || "Push succeeded"}`, "info");
+      await run("jj", [...mutationFlags, ...push]);
+      emit({ title: "Pushed", vcs: "jj" });
     } catch (error) {
       ctx.ui.notify(`${error instanceof Error ? error.message : String(error)}${moved ? "\nBookmark may now be moved locally; inspect before retrying. No automatic rollback." : ""}`, "error");
     } finally { busy = false; }

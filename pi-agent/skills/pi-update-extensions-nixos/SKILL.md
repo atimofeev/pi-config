@@ -21,6 +21,6 @@ Use when `pi update --extensions` fails on NixOS with `node-gyp-build: command n
 Pi agent paths: npm modules at `~/.pi/agent/npm/node_modules/` (NOT `~/.pi/npm/lib/...`). User agents at `~/.pi/agent/agents/`. Extensions at `~/.pi/agent/extensions/`. `@tintinweb/pi-subagents` has no builtin agent `.md` files (defaults embedded); its `/agents` command comes from the installed package, no user extension needed.
 ## Verification
 1. `pi update --extensions` exits 0 and prints 'Updated packages'
-2. `node -e "require('/home/atimofeev/.pi/agent/npm/node_modules/better-sqlite3')"` loads without error
+2. `node -e "require('${HOME}/.pi/agent/npm/node_modules/better-sqlite3')"` loads without error
 3. `ls ~/.pi/agent/npm/node_modules/better-sqlite3/build/Release/better_sqlite3.node` exists
 4. `find ~/.pi/agent/npm/node_modules/tree-sitter-bash/prebuilds/linux-x64 -name '*.node'` returns a file

@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Box, Spacer, Text } from "@earendil-works/pi-tui";
-import { createPushHandler } from "./lib/vcs-push.ts";
+import { createPushHandler, formatPushEntry, type PushEntry } from "./lib/vcs-push.ts";
 
 type VcsEntry = {
   vcs: "jj" | "git";
@@ -18,8 +18,10 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("push", {
     description: "Push current Git branch or nearest Jujutsu bookmark",
     argumentHint: "[bookmark]",
-    handler: createPushHandler((command, args, options) => pi.exec(command, args, options)),
+    handler: createPushHandler((command, args, options) => pi.exec(command, args, options), undefined, entry => pi.appendEntry("vcs-push", entry)),
   });
+  pi.registerEntryRenderer<PushEntry>("vcs-push", (entry, _options, theme) =>
+    new Text(theme.fg("toolTitle", formatPushEntry(entry.data, text => theme.fg("accent", text))), 0, 0));
   registerVcsRenderer(pi, "vcs-diff", "diff", true);
   registerVcsRenderer(pi, "vcs-status", "status");
 

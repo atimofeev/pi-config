@@ -4,34 +4,37 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { createPushHandler, type PushContext } from "../pi-agent/extensions/lib/vcs-push.ts";
+import { createPushHandler, formatPushCommit, type PushEntry, type PushContext } from "../pi-agent/extensions/lib/vcs-push.ts";
 
 const id = "a".repeat(40), parent = "b".repeat(40);
 const commit = (hash = id, description = "feat: change", empty = false, conflict = false) => `${hash}\t${JSON.stringify(description)}\t${empty}\t${conflict}`;
 const ref = (name = "main", remote = "", hash = parent, tracked = false) => `${JSON.stringify(name)}\t${JSON.stringify(remote)}\t${tracked}\ttrue\t${hash}`;
 function fixture(jj = false, overrides: Record<string, string | number | (() => string)> = {}) {
   const calls: string[][] = [], messages: string[] = [], confirms: string[] = [], selections: string[][] = [];
+  const entries: PushEntry[] = [], events: string[] = [];
   let confirm = true, selection: string | undefined = undefined;
   let movedTo: string | undefined;
   let movedName = "main";
   const defaults: Record<string, string | number> = jj ? {
-    outgoing: "", excluded: "", root: "/repo", "log @": commit(), "log @-": commit(parent), nearest: commit(parent),
+    ancestry: `${commit()}\n${commit(parent)}`, outgoing: "", excluded: "", root: "/repo", "log @": commit(), "log @-": commit(parent), nearest: commit(parent),
     bookmarks: ref(), remotes: "origin https://example.invalid/repo", move: "", dry: "Would push", push: "Pushed",
   } : {
     remoteRef: 1, subject: "feat: change", outgoing: "", root: "/repo", branch: "main", remoteConfig: "origin", merge: "refs/heads/release", remotes: "origin", status: "", head: id, push: "Pushed",
   };
   const ctx: PushContext = { cwd: "/repo", hasUI: true, ui: {
     notify: message => { messages.push(message); },
-    confirm: async (_title, message) => { confirms.push(message); return confirm; },
+    confirm: async (title, message) => { confirms.push(`${title}\n${message}`); return confirm; },
     select: async (_title, choices) => { selections.push(choices); return selection; },
   } };
   const handler = createPushHandler(async (command, args) => {
     calls.push([command, ...args]);
+    if (args.includes("move")) events.push("move");
+    if (args.includes("push")) events.push(args.includes("--dry-run") ? "dry" : "push");
     const a = command === "jj" ? args.filter(arg => !["--no-pager", "--color=never", "--ignore-working-copy"].includes(arg)) : args;
     let key: string;
     if (command === "jj") {
       if (a[0] === "root") key = "root";
-      else if (a[0] === "log") { const rev = a[a.indexOf("-r") + 1]; key = rev.startsWith("heads(") ? "nearest" : rev.includes("..") ? (rev.startsWith(id) ? "excluded" : "outgoing") : `log ${rev}`; }
+      else if (a[0] === "log") { const rev = a[a.indexOf("-r") + 1]; key = rev.startsWith("::") ? "ancestry" : rev.startsWith("heads(") ? "nearest" : rev.includes("..") ? (rev.startsWith(id) ? "excluded" : "outgoing") : `log ${rev}`; }
       else if (a[0] === "bookmark") key = a[1] === "list" ? "bookmarks" : "move";
       else key = a[1] === "remote" ? "remotes" : a.includes("--dry-run") ? "dry" : "push";
     } else {
@@ -47,8 +50,8 @@ function fixture(jj = false, overrides: Record<string, string | number | (() => 
     assert.notEqual(value, undefined, `Unexpected command ${command} ${args.join(" ")}`);
     if (typeof value === "number") return { code: value, stdout: "", stderr: "command failed" };
     return { code: 0, stdout: typeof value === "function" ? value() : value!, stderr: "" };
-  }, () => jj ? "/repo" : undefined);
-  return { ctx, calls, messages, confirms, selections, handler, cancel: () => { confirm = false; }, select: (value?: string) => { selection = value; } };
+  }, () => jj ? "/repo" : undefined, entry => { entries.push(entry); events.push(entry.title); });
+  return { ctx, calls, entries, events, messages, confirms, selections, handler, cancel: () => { confirm = false; }, select: (value?: string) => { selection = value; } };
 }
 const mutations = (f: ReturnType<typeof fixture>) => f.calls.filter(c => c.includes("move") || c.includes("push"));
 
@@ -173,7 +176,7 @@ async function sandbox(t: TestContext) {
   await run("git", ["init", "--bare", remote], root);
   const messages: string[] = [], confirmations: string[] = [];
   const ctx: PushContext = { cwd: repo, hasUI: true, ui: {
-    confirm: async (_title, message) => { confirmations.push(message); return true; },
+    confirm: async (title, message) => { confirmations.push(`${title}\n${message}`); return true; },
     select: async (_title, choices) => choices[0],
     notify: message => { messages.push(message); },
   } };
@@ -236,35 +239,32 @@ for (const emptyChild of [true, false]) {
 }
 
 for (const jj of [true, false]) {
-  test(`${jj ? "JJ" : "Git"} readable remote-based six-commit review, oldest-first`, async () => {
+  test(`${jj ? "JJ" : "Git"} remote-based count and ${jj ? "newest-first ancestry" : "oldest-first outgoing"} review`, async () => {
     const subjects = Array.from({ length: 6 }, (_, i) => `feat: human change ${i + 1}`);
     const hashes = subjects.map((_, i) => (i + 1).toString(16).repeat(40));
     const history = subjects.map((text, i) => jj ? commit(hashes[i], `${text}\nprivate body`) : `${hashes[i]}\t${text}`).join("\n");
-    const f = fixture(jj, { bookmarks: `${ref("main", "", id)}\n${ref("main", "origin", parent, true)}`, remoteRef: parent, nearest: commit(id), outgoing: history, "log @": commit(id, "target\u001b subject\nprivate body") });
+    const f = fixture(jj, { bookmarks: `${ref("main", "", id)}\n${ref("main", "origin", parent, true)}`, remoteRef: parent, nearest: commit(id), ancestry: [commit(id, "target subject"), ...subjects.map((text, i) => commit(hashes[i], text)).reverse()].join("\n"), outgoing: history, "log @": commit(id, "target\u001b subject\nprivate body") });
     await f.handler("", f.ctx);
     assert.match(f.confirms[0], /Outgoing: 6 commits/);
     assert.match(f.confirms[0], new RegExp(`Destination: origin/${jj ? "main" : "release"}`));
     let previous = -1;
-    for (const text of subjects) { const index = f.confirms[0].indexOf(text); assert.ok(index > previous); previous = index; }
+    for (const text of jj ? [...subjects].reverse() : subjects) { const index = f.confirms[0].indexOf(text); assert.ok(index > previous); previous = index; }
     assert.doesNotMatch(f.confirms[0], /private body|\u001b/);
     const log = f.calls.find(c => c.includes(`${parent}..${id}`));
     assert.ok(log); assert.ok(log.includes(jj ? "--reversed" : "--reverse"));
-    if (jj) { assert.match(f.messages[0], /Outgoing: 6 commits/); assert.match(f.messages[0], /Would push/); }
-    const final = f.messages.at(-1)!;
-    assert.match(final, new RegExp(`Destination: origin/${jj ? "main" : "release"}`));
-    assert.match(final, /Outgoing: 6 commits/);
-    for (const text of subjects) assert.ok(final.includes(text));
+    assert.equal(f.messages.length, 0);
+    assert.equal(f.entries.at(-1)?.title, "Pushed");
   });
   test(`${jj ? "JJ" : "Git"} unknown remote and explicit history omission`, async () => {
     const unknown = fixture(jj); await unknown.handler("", unknown.ctx);
     assert.match(unknown.confirms[0], /Outgoing count unavailable/);
-    assert.match(unknown.confirms[0], /Target: aaaaaaaaaaaa feat: change/);
+    assert.match(unknown.confirms[0], jj ? /aaaaaaaaaaaa feat: change <- main/ : /Target: aaaaaaaaaaaa feat: change/);
     assert.doesNotMatch(unknown.confirms[0], /Outgoing: 0/);
     const history = Array.from({ length: 23 }, (_, i) => jj ? commit(parent, `subject ${i}`) : `${parent}\tsubject ${i}`).join("\n");
     const f = fixture(jj, { bookmarks: `${ref()}\n${ref("main", "origin", parent, true)}`, remoteRef: parent, outgoing: history });
     await f.handler("", f.ctx);
-    assert.match(f.confirms[0], /Outgoing: 23 commits/); assert.match(f.confirms[0], /\.\.\. 3 more commits/);
-    assert.match(f.confirms[0], /subject 19/); assert.doesNotMatch(f.confirms[0], /subject 20/);
+    assert.match(f.confirms[0], /Outgoing: 23 commits/);
+    if (!jj) { assert.match(f.confirms[0], /\.\.\. 3 more commits/); assert.match(f.confirms[0], /subject 19/); assert.doesNotMatch(f.confirms[0], /subject 20/); }
   });
   test(`${jj ? "JJ" : "Git"} reviewed remote changes or disappears during confirmation refuses mutation`, async () => {
     for (const removed of [false, true]) {
@@ -287,12 +287,12 @@ test("JJ backwards/rewrite review warns without force or validation bypass", asy
   const f = fixture(true, { bookmarks: `${ref()}\n${ref("main", "origin", parent, true)}`, excluded: `${commit(parent)}\n${commit("c".repeat(40))}` });
   await f.handler("", f.ctx);
   assert.match(f.confirms[0], /remote history excludes 2 previous commits; native validation may reject/);
-  assert.match(f.messages[0], /remote history excludes 2 previous commits/);
+  assert.equal(f.messages.length, 0);
   assert.ok(f.calls.every(c => !c.some(arg => /force|allow/.test(arg))));
 });
 
 for (const useJj of [true, false]) {
-  test(`Local ${useJj ? "JJ" : "Git"} remote base plus two new commits reviews exactly two subjects`, async t => {
+  test(`Local ${useJj ? "JJ" : "Git"} remote base plus two new commits counts outgoing and previews history`, async t => {
     const s = await sandbox(t);
     const jj = (args: string[]) => s.run("jj", ["--no-pager", "--color=never", "--config", "user.name=Push Test", "--config", "user.email=push@example.invalid", ...args]);
     if (useJj) {
@@ -323,13 +323,45 @@ for (const useJj of [true, false]) {
     const text = s.confirmations[0];
     assert.match(text, /Outgoing: 2 commits/);
     assert.match(text, /first outgoing subject/); assert.match(text, /second outgoing subject/);
-    assert.ok(text.indexOf("first outgoing subject") < text.lastIndexOf("second outgoing subject"));
-    assert.doesNotMatch(text, /base must not appear|body must not appear/);
+    assert.equal(text.indexOf("first outgoing subject") < text.lastIndexOf("second outgoing subject"), !useJj);
+    assert.doesNotMatch(text, /body must not appear/);
+    if (useJj) assert.match(text, /base must not appear/); else assert.doesNotMatch(text, /base must not appear/);
     assert.doesNotMatch(s.messages.join("\n"), /failed|changed during confirmation/);
-    if (useJj) assert.match(s.messages[0], /Outgoing: 2 commits/);
-    const final = s.messages.at(-1)!;
-    assert.match(final, /Destination: origin\/main/);
-    assert.match(final, /Outgoing: 2 commits/);
-    assert.match(final, /first outgoing subject/); assert.match(final, /second outgoing subject/);
+    assert.match(s.messages.at(-1)!, /Pushed/);
   });
 }
+
+test("Persistent push entries, ordering and failure boundaries", async () => {
+  const f = fixture(true); await f.handler("", f.ctx);
+  assert.deepEqual(f.events, ["move", "Bookmark moved:", "dry", "push", "Pushed"]);
+  assert.deepEqual(f.entries[1], { title: "Pushed", vcs: "jj" });
+  assert.equal(f.messages.length, 0);
+  const git = fixture(); await git.handler("", git.ctx);
+  assert.deepEqual(git.entries, [{ title: "Pushed", vcs: "git", commit: { id, description: "feat: change" }, name: "main" }]);
+  for (const key of ["move", "dry", "push"]) {
+    const failed = fixture(true, { [key]: 1 }); await failed.handler("", failed.ctx);
+    assert.equal(failed.entries.length, key === "move" ? 0 : 1);
+    assert.match(failed.messages.join(), /command failed/);
+    if (key !== "move") assert.match(failed.messages.join(), /moved locally/);
+  }
+  for (const jj of [false, true]) { const cancelled = fixture(jj); cancelled.cancel(); await cancelled.handler("", cancelled.ctx); assert.deepEqual(cancelled.entries, []); }
+});
+test("JJ ancestry capped, old tips explicit, same tip single marker, theme accents sanitized marker", async () => {
+  const ancestry = [commit(), commit(parent, "old subject"), ...Array.from({ length: 12 }, (_, i) => commit(String(i).padStart(40, "c"), `history ${i}`))].join("\n");
+  const f = fixture(true, { ancestry }); const accents: string[] = [];
+  f.ctx.ui.theme = { fg: (color, text) => {
+    if (color === "accent") { accents.push(text); return `[accent:${text}]`; }
+    return `[text:${text}]`;
+  } };
+  await f.handler("", f.ctx);
+  assert.match(f.confirms[0], /^Bookmark will move:\n\[text:aaaaaaaaaaaa feat: change \[accent:<- main\]\]/);
+  assert.match(f.confirms[0], /bbbbbbbbbbbb old subject \[accent:- main \(old\)\]/);
+  assert.match(f.confirms[0], /history 7/); assert.doesNotMatch(f.confirms[0], /history 8/);
+  assert.deepEqual(accents, ["<- main", "- main (old)"]);
+  assert.ok(f.calls.some(c => c.includes("::" + id) && c.includes("10") && !c.includes("--reversed")));
+  const outside = fixture(true, { ancestry: commit() }); await outside.handler("", outside.ctx);
+  assert.match(outside.confirms[0], /Old tip outside displayed ancestry: bbbbbbbbbbbb main \(old\)/);
+  const same = fixture(true, { bookmarks: ref("main", "", id), nearest: commit(id) }); await same.handler("", same.ctx);
+  assert.doesNotMatch(same.confirms[0], /\(old\)/);
+  assert.equal(formatPushCommit({ id, description: "subject\x1b[31m\nbody" }, "<- name\x1b[31m", text => `{${text}}`), "aaaaaaaaaaaa subject {<- name}");
+});

@@ -1,9 +1,9 @@
 ---
 name: "verify-reviewed-jj-push-target"
 description: "Verify JJ push automation publishes reviewed commits without snapshotting later filesystem edits"
-version: 1
+version: 2
 created: "2026-10-02"
-updated: "2026-10-02"
+updated: "2026-10-10"
 ---
 ## When to Use
 Use when building or testing interactive JJ bookmark-and-push automation, especially when described @ itself is the publish target.
@@ -18,10 +18,10 @@ Use when building or testing interactive JJ bookmark-and-push automation, especi
 ## Pitfalls
 - JJ has no current branch; nearest-bookmark inference is a conservative convention, not proof of user intent.
 - Mocks can pass with invalid JJ templates or pattern syntax. Verify native commands against installed JJ version.
+- exact:NAME is a bookmark-name pattern, not a revset. For jj log -r, use a quoted symbol such as '"feat/my-branch"'; for remote use '"feat/my-branch"@origin'.
 - JJ 0.41 removed --allow-new; explicitly selected bookmarks auto-track on push. Check installed help instead of copying older flags.
 - Dry-run or push failure can leave bookmark moved locally. Report that state; avoid automatic rollback that may overwrite concurrent changes.
 - Do not push real upstream during tests or run Git commands inside JJ fixtures.
-
 ## Verification
 1. Native integration tests show intended local bare-remote ref points to reviewed full commit ID.
 2. Edits injected after review remain on disk and never appear in pushed content.

@@ -4,6 +4,11 @@ pi-agent/npm/
 # Generated runtime caches and downloaded binaries
 pi-agent/cache/
 
+# Codex usage runtime ledger
+pi-agent/codex-usage.json
+pi-agent/codex-usage.json.lock
+pi-agent/codex-usage.json.*.tmp
+
 # Sensitive: auth tokens
 pi-agent/auth.json
 pi-agent/mcp-auth.json

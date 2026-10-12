@@ -1,9 +1,9 @@
 ---
 name: "resolve-and-squash-fork-pr"
 description: "Resolve merge conflicts in GitHub fork PR, squash commits onto current upstream, and force-push safely with exact head-SHA lease."
-version: 2
+version: 3
 created: "2026-10-06"
-updated: "2026-10-06"
+updated: "2026-10-12"
 ---
 ## When to Use
 User explicitly requests conflict resolution, squash, and force-push for existing GitHub fork PR; no need to mutate their working checkout.
@@ -17,10 +17,12 @@ User explicitly requests conflict resolution, squash, and force-push for existin
 
 ## Pitfalls
 - Never reuse or discard unrelated working-tree edits; fresh clone avoids that risk. Use JJ exclusively if existing checkout has .jj.
+- Use mktemp -d under /tmp/pi-coding-agent for fresh isolated clones; fixed task paths may already contain prior work. Never remove existing directories to make room.
+- gh repo clone of a fork may automatically add and fetch upstream. Inspect existing remotes before adding upstream to avoid remote-already-exists failures.
+- Conflict resolution alone does not require squash or history rewriting. Preserve existing PR commits with an upstream merge and normal fast-forward push unless user explicitly requests squash/rebase.
 - gh pr view baseRefOid may lag current upstream tip while PR mergeability is cached; fetched upstream ref identifies current base. Validate branch identity and captured pre-push base, rather than assuming stale metadata is current.
 - Do not silently widen lease or overwrite concurrent changes. Never use unguarded --force.
 - NixOS bundled native lint binaries may need glibc loader wrapper; do not rewrite vendor binaries. Keep check commands non-writing.
-
 ## Verification
 1. Diff preserves original PR code, tests and docs plus upstream release notes; no conflict markers or whitespace errors.
 2. Affected tests, non-writing lint and type checks exit zero; working tree clean. If PR requires coverage, run coverage and inspect newly introduced branches, not only test pass counts.

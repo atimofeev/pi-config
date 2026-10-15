@@ -11,7 +11,7 @@ registerHooks({
   },
   load(url, context, next) {
     const sources = {
-      'stub:tui': `export class Container { children=[]; addChild(c){this.children.push(c)} } export class Text { constructor(text){this.text=text} } export const visibleWidth=s=>s.replace(/\\x1b\\[[0-9;]*m/g,'').length; export const truncateToWidth=(s,w)=>s.slice(0,w);`,
+      'stub:tui': `export class Container { children=[]; addChild(c){this.children.push(c)} } export class Text { constructor(text){this.text=text} } export const visibleWidth=s=>s.replace(/\\x1b\\[[0-9;]*m/g,'').length; export const truncateToWidth=(s,w)=>visibleWidth(s)<=w?s:s.slice(0,w);`,
       'stub:jj': 'export const resolveJjBookmark=()=>null;',
       'stub:go': 'export const fetchWithCache=()=>{throw Error("unexpected Go fetch")}; export const formatDuration=String;',
     };
@@ -22,13 +22,13 @@ registerHooks({
 const { default: native } = await import('../pi-agent/extensions/pi-codex-bars.ts');
 const { default: proxy } = await import('../pi-agent/extensions/litellm-backend-status.ts');
 const theme = { fg: (_c,s)=>s, bold:s=>s, getFgAnsi:()=>'' };
-function harness(extension, provider) {
+function harness(extension, provider, themeOverride = theme) {
   const handlers = new Map(); const commands = new Map(); let footer; let overlay;
   const ctx = {
     model: { provider, id:'test' }, hasUI:true,
-    ui: { setFooter: f=>{footer=f?.({ requestRender(){} }, theme, {
+    ui: { setFooter: f=>{footer=f?.({ requestRender(){} }, themeOverride, {
       onBranchChange:()=>()=>{}, getGitBranch:()=>null, getAvailableProviderCount:()=>1, getExtensionStatuses:()=>new Map(),
-    })}, setWidget(){}, setStatus(){}, custom:async f=>{overlay=f({},theme,{},()=>{})} },
+    })}, setWidget(){}, setStatus(){}, custom:async f=>{overlay=f({},themeOverride,{},()=>{})} },
     sessionManager: {getCwd:()=>'/test',getSessionName:()=>null,getEntries:()=>[]},
     getContextUsage:()=>({contextWindow:1000,percent:0}),modelRegistry:{isUsingOAuth:()=>false},
   };
@@ -94,4 +94,57 @@ test('proxy detail and footer discard failed-response quota; missing detail expl
   assert.match(snapshot, /LiteLLM must forward provider quota headers/);
   assert.doesNotMatch(footer.render(), /37%/);
   for (const h of [detail,footer]) await h.event('session_shutdown');
+});
+
+const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, '');
+const colors = { dim: 90, warning: 33, error: 31 };
+const ansiTheme = {
+  fg: (color, text) => `\x1b[${colors[color] ?? 36}m${text}\x1b[39m`,
+  bold: text => `\x1b[1m${text}\x1b[22m`,
+  getFgAnsi: color => `\x1b[${colors[color] ?? 36}m`,
+};
+
+// Track SGR foreground state per visible character, including resets inside bars.
+function foregrounds(text) {
+  let foreground = null;
+  const result = [];
+  for (const token of text.matchAll(/\x1b\[([0-9;]*)m|([^\x1b])/gs)) {
+    if (token[2] !== undefined) result.push(foreground);
+    else for (const code of (token[1] || '0').split(';').map(Number)) {
+      if (code === 0 || code === 39) foreground = null;
+      else if ((code >= 30 && code <= 37) || (code >= 90 && code <= 97)) foreground = code;
+    }
+  }
+  return result;
+}
+
+test('proxy model alias and backend stay dim after quota and context color resets', async()=>{
+  const h = harness(proxy, 'litellm', ansiTheme);
+  await h.event('session_start');
+  try {
+    await new Promise(r=>setTimeout(r,5));
+    for (const quota of [false, true]) {
+      for (const percent of [0, 80, 95]) {
+        h.ctx.getContextUsage = () => ({ contextWindow: 1000, percent });
+        await h.event('after_provider_response', { status: 200, headers: {
+          ...(quota ? headers : {}), 'x-litellm-model-name': 'chatgpt/backend',
+        } });
+        const lines = h.render().split('\n');
+        const plain = stripAnsi(lines[1]);
+        assert.equal(stripAnsi(lines[0]), '/test');
+        assert.equal(plain.length, 160);
+        assert.ok(plain.startsWith(`${percent.toFixed(1)}%/1.0k`));
+        assert.ok(plain.endsWith('test→backend'));
+        assert.equal(/2h .*37%/.test(plain), quota);
+        const active = foregrounds(lines[1]);
+        const start = plain.indexOf('test→backend');
+        assert.deepEqual(active.slice(start, start + 'test→backend'.length),
+          Array('test→backend'.length).fill(colors.dim),
+          `model foreground: quota=${quota}, context=${percent}`);
+        if (percent > 70) assert.equal(active[0], percent > 90 ? colors.error : colors.warning);
+      }
+    }
+  } finally {
+    await h.event('session_shutdown');
+  }
 });

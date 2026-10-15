@@ -275,7 +275,7 @@ export default function (pi: ExtensionAPI) {
             ? Math.max(2, Math.floor((width - statsWidth - renderedCenterWidth - modelWidth) / 2))
             : 2;
           const rightGap = Math.max(2, width - statsWidth - renderedCenterWidth - modelWidth - leftGap);
-          const statsLine = statsLeft + " ".repeat(leftGap) + center + " ".repeat(rightGap) + rightSide;
+          const statsLine = statsLeft + " ".repeat(leftGap) + center + " ".repeat(rightGap) + theme.fg("dim", rightSide);
           return [cwdLine, truncateToWidth(theme.fg("dim", statsLine), width, theme.fg("dim", "..."))];
         },
       };

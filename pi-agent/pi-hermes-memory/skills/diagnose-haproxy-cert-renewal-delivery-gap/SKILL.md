@@ -1,9 +1,9 @@
 ---
 name: "diagnose-haproxy-cert-renewal-delivery-gap"
 description: "Diagnose HAProxyTLSCertificateExpiresSoon when Certbot renews automatically but HAProxy still serves old cert; compare served expiry, issuer logs, Vault push and scheduled CI delivery timestamps."
-version: 1
+version: 2
 created: "2026-10-12"
-updated: "2026-10-12"
+updated: "2026-10-13"
 ---
 ## When to Use
 Use for certificate expiry alerts with separate issuance, secret-store publication and host deployment. Read-only diagnosis first.
@@ -21,7 +21,9 @@ Use for certificate expiry alerts with separate issuance, secret-store publicati
 - SSH denial on consumer does not imply issuer inaccessible. CI host task evidence can verify prior delivery/reload without direct consumer access.
 - Never print private keys, Vault tokens, AppRole secret IDs or unfiltered credential-bearing files.
 - Private stdlib ssl._ssl._test_decode_cert is diagnostic fallback, not production API.
-
+- Do not assume every public TLS endpoint is nginx or HAProxy. Correlate hostname aliases and DNS IPs with inventory and VPN source-network lists; remote-access portals can terminate TLS directly on firewalls.
+- An issuer lineage plus successful Vault publication does not establish consumer rotation coverage. Check consumer group membership and supported delivery roles; firewall/PAN-OS imports may require separate automation.
+- Missing consumer configuration in one repository proves only that repository lacks coverage. Do not claim no external automation exists without evidence.
 ## Verification
 1. Identify exact expiring certificate by served SNI.
 2. Collect issuer renewal and successful publication evidence.

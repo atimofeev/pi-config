@@ -1,12 +1,12 @@
 ---
 name: "verify-waf-client-ip-headers"
-description: "Investigate AWS WAF missing X-Forwarded-For metrics: correlate X-Session-ID, identify brand by Host/Origin/URI, separate real client IPs from CDN proxies, and assess bet geo impact without exposing sessions."
+description: "Diagnose AWS WAF X-Forwarded-For/session-header gaps, proxy IP leakage and client-IP attribution using private samples and live rule/forwarding evidence."
 version: 1
 created: "2026-10-05"
 updated: "2026-10-05"
 ---
 ## When to Use
-Use for CloudFront-scoped WAF header diagnostics and suspected client-IP/geo loss. Read-only investigation; never infer application geo solely from count-no-xff metrics.
+Use for CloudFront-scoped WAF header diagnostics, proxy-header privacy and suspected client-IP/geo loss. Read-only investigation; never infer application geo solely from count-no-xff metrics.
 
 ## Procedure
 1. Resolve exact CloudFront aliases, distribution ID, attached WebACL ARN, metric rule predicates, AWS profile and region through narrowly scoped reads. CloudFront WAF uses us-east-1.

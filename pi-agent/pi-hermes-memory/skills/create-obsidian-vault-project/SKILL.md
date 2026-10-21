@@ -1,9 +1,9 @@
 ---
 name: "create-obsidian-vault-project"
 description: "Create new project in user obsidian-vault from conversation research, following AGENTS.md, flat projects layout, vault-schema metadata, Dataview discovery and safe JJ verification."
-version: 1
+version: 2
 created: "2026-10-10"
-updated: "2026-10-10"
+updated: "2026-10-20"
 ---
 ## When to Use
 User asks to create project note in obsidian-vault; not bulk metadata cleanup or archiving.
@@ -11,12 +11,11 @@ User asks to create project note in obsidian-vault; not bulk metadata cleanup or
 ## Procedure
 1. Locate vault and read its AGENTS.md completely; read required tagging, PARA, dashboard and other task references. Treat older migration proposals as subordinate to current AGENTS.md.
 2. Infer project subject from immediate conversation when high confidence; ask only when ambiguity changes requested project. Preserve verified facts versus unknowns, and do not invent deadlines or completed implementation.
-3. Load Jujutsu skill before VCS operations if .jj exists. Record initial status, preserve unrelated files, and do not commit, push or change snapshot limits without user request.
-4. Choose projects/<kebab-case>.md and stable id. Check target absent and id unique; stop on collisions rather than overwrite. Use required id/aliases/type/tags, suitable domain and explicit initial lifecycle where clear.
+3. Load Jujutsu skill before VCS operations if .jj exists. Record initial status and baseline parent revision, preserve unrelated files, and do not manually commit, push or change snapshot limits without user request.
+4. Choose projects/<kebab-case>.md and stable id. Check target absent and id unique; stop on collisions rather than overwrite. Use required id/aliases/type/tags, suitable domain and explicit initial lifecycle where clear. Active planning and a deliberately deferred draft are different; pending implementation alone does not determine lifecycle.
 5. Prefer existing topic tags, maximum five. For personal project omit work tag; dynamic dashboard will discover active project without dashboard changes.
 6. Write one project note with goal, actionable checkboxes, verified baseline, risks/unknowns, acceptance criteria and source links. Mark research already completed separately from implementation still pending. Link only existing related notes.
-7. Read actual created file and inspect JJ diff/stat. Validate metadata, unique id and wikilinks. Report exact path; leave existing notes and cluster unchanged.
-
+7. Read actual created file and inspect JJ diff/stat. Validate metadata, unique id and wikilinks. If vault autosync commits during verification, inspect cumulative diff from recorded baseline to saved revision and compare actual note with committed content; an empty working-copy diff is not missing work. Do not rewrite history to recreate an uncommitted diff. Stop for unexpected unrelated file changes; preserve them after user approval. Report exact path and any external autosync, leaving existing notes and cluster unchanged.
 ## Pitfalls
 - No lifecycle subdirectories, numbered PARA folders or folder index convention should be invented.
 - Vault log is required for dedicated scheduled/background maintenance jobs, not automatically for every foreground one-note creation.

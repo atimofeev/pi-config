@@ -53,6 +53,7 @@
   "autocompleteMaxVisible": 10,
   "fullscreenWheelScrollLines": 5,
   "terminal": {
+    "hyperlinks": true,
     "showTerminalProgress": false
   },
   "collapseChangelog": true

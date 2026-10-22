@@ -1,5 +1,12 @@
 {
   "providers": {
+    "openai-codex": {
+      "modelOverrides": {
+        "gpt-6.1-sol": {
+          "contextWindow": 500000
+        }
+      }
+    },
     "ollama": {
       "baseUrl": "http://localhost:11434/v1",
       "api": "openai-completions",

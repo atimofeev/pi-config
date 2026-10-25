@@ -1,15 +1,5 @@
 {
   "providers": {
-    "litellm": {
-      "modelOverrides": {
-        "medium": {
-          "contextWindow": 500000
-        },
-        "medium-codex": {
-          "contextWindow": 500000
-        }
-      }
-    },
     "openai-codex": {
       "modelOverrides": {
         "gpt-6.1-sol": {

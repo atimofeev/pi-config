@@ -149,7 +149,7 @@ function buildPrompt(extraContext: string, preflight: Preflight): string {
     "Perform no git or jj shell operations yourself.",
     "Pass the preflight and any additional context below to the subagent unchanged.",
     "Require granular commits: plan independent concerns from the diff before committing, then commit each concern separately.",
-    "Default to one commit per changed path. Combine paths only when one change requires them together; if unsure, split them.",
+    "Default to one commit per logical change, not per changed path. Keep a cohesive feature and its tests/docs together; separate unrelated concerns.",
     "If you see a Jira ticket provided in additional context, add the ID to the commit body.",
     "Return the subagent final response verbatim.",
     "",

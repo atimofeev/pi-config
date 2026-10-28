@@ -1,12 +1,12 @@
 ---
 name: "squash-jj-pr-tree-exact"
-description: "Squash GitHub PR in colocated Jujutsu into one commit and guarded force-push while preserving exact reviewed tree and dirty working copies; safe for old merge-based branches."
-version: 1
+description: "Publish merge-based Jujutsu PR history as one exact-tree commit while preserving dirty workspaces and guarding force-push; not for routine clean linear local squashes."
+version: 2
 created: "2026-10-10"
-updated: "2026-10-10"
+updated: "2026-10-27"
 ---
 ## When to Use
-User explicitly authorizes squash and force-push of an existing PR; working copies must stay untouched and resulting commit must contain exactly the previously reviewed content.
+Use only when user explicitly authorizes squash and force-push of an existing PR AND merge-based history or dirty/shared workspaces make native linear squash unsuitable. Preserve exact reviewed tree and existing working copies. For routine clean linear local squash, use native jj squash --from FIRST..TIP --into FIRST -m MESSAGE with local tree/status verification instead. Do not authenticate remotes, reconstruct commits, or add filesystem backups for that fast path.
 
 ## Procedure
 1. Activate Jujutsu and gh-cli skills. Authenticate GitHub. Pin reviewed full head SHA, intended sole base SHA, branch, commit message, PR state, and intended changed paths. Stop on changed refs or unexpected scope.

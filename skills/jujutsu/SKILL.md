@@ -8,19 +8,16 @@ allowed-tools: Bash(jj *)
 
 This skill helps you work with Jujutsu, a Git-compatible VCS with mutable commits and automatic rebasing.
 
-**Tested with jj v0.37.0** - Commands may differ in other versions.
+**Native squash recipe tested with jj v0.41.0** - Commands may differ in other versions; inspect installed help before relying on newer flags.
 
 ## Fast path for `/commit-changes`
 
 If slash-command preflight already says `vcs: Jujutsu (.jj)` and lists changed files, use this section only unless command fails or history is ambiguous:
 
-1. Inspect exact patch: `jj --no-pager diff --git`.
-2. If one safe logical group, describe working-copy commit: `jj desc -m "type(scope): description"`.
-3. Finalize by creating next empty working-copy commit: `jj new`.
-
-Subset commit (only some files, keep rest in working copy):
-`jj commit -m "type(scope): description" <paths>` — commits only the given paths into a new commit; remaining changes stay in the working copy. This is the ONLY safe primitive for subset commits. Do NOT use `jj split` (launches editor for description, hangs in agent env) or `jj restore` (discards changes, does not move them).
-4. Verify and output evidence: `jj --no-pager st` then output line `COMMITTED: <change-id> | <type(scope): description> | status: ok`. Get change-id from `jj --no-pager log -r @- --no-graph -T 'change_id'`.
+1. Inspect exact patch once: `jj --no-pager diff --git`.
+2. If one safe logical group, finalize with `jj commit -m "type(scope): description"`. Omit paths only when intentionally committing every remaining change and all paths serve one concern.
+3. For subset commits, use `jj commit -m "type(scope): description" <paths>`: selected paths become a commit; remaining changes stay in the new working copy. Do not split a cohesive feature per file. Never use `jj split` (opens editor) or `jj restore` (replaces file content, does not move changes between commits).
+4. Verify once with `jj --no-pager st` and `jj --no-pager log -r @- --no-graph -T 'change_id'`. Output `COMMITTED: <change-id> | <type(scope): description> | status: ok`.
 
 Rules: never use `git` in `.jj` repo, never use editor-prompt commands, never use interactive `jj squash -i`.
 
@@ -55,7 +52,7 @@ Editor-based commands will fail in non-interactive environments.
 
 In jj, your working directory is always a commit (referenced as `@`). Changes are automatically snapshotted when you run any jj command. There is no staging area.
 
-There is no need to run `jj commit`.
+`jj describe -m` changes the description only. `jj commit -m` finalizes selected changes and creates the next working-copy commit.
 
 ### Commits Are Mutable
 
@@ -155,18 +152,28 @@ jj next -e
 
 ### Squashing Changes
 
-Move changes from current commit into its parent:
+For a clean linear feature branch, prefer one native squash, not new commit reconstruction:
+
+1. Inspect local status/history once. Pin full old tip ID, exact base ID, first selected commit, and target bookmark. Confirm selected range is linear and excludes unrelated commits. Empty `@` above feature tip is not a feature commit.
+2. Stop on dirty unrelated work, conflicts, divergence, merges, uncertain base, or side descendants/other local bookmarks/workspaces that would also be rewritten. Do not stash, switch workspaces, or silently escalate to a complicated recovery procedure. One existing feature commit needs no rewrite unless its message must change.
+3. Squash descendants into first selected commit with explicit message:
 
 ```bash
-# Squash all changes into parent
-jj squash
+jj --no-pager squash --from '<first>..<old-tip>' --into <first> -m "type(scope): description"
 ```
 
-**Note**: `jj squash -i` opens an interactive UI and will hang in agent environments. Avoid it.
+`first..old-tip` excludes destination and selects only later feature commits. Result keeps original base; descendants, including an empty working copy, rebase automatically. For a single selected commit with explicitly requested message change, use `jj describe -r <first> -m "type(scope): description"` instead.
+
+4. Require `jj --no-pager diff --from <old-tip> --to <new-tip> --summary` empty, exactly one commit above pinned base, sole parent equal base, target bookmark on new commit, and working copy clean/preserved. If bookmark needs moving, move only it to squashed commit, not empty `@`.
+5. Report old/new IDs, preserved tree, and local-only result. Original ID and native operation log provide recovery. No remote/API queries, whole-worktree hashing, filesystem backups, extra workspaces, or isolated reconstruction for this fast path. Aim for roughly 10 seconds; safety checks remain mandatory.
+
+Local squash does not authorize push or force-push. Remote checks belong only to a separately requested push. Complex merge-based/dirty-workspace exact-tree publication requires a separately reviewed procedure, not the routine default.
+
+To squash only current commit into its parent, use `jj squash -m "type(scope): description"`. Never use bare `jj squash` or `jj squash -i` in agent environments: either can launch an editor.
 
 ### Splitting Commits
 
-**Warning**: `jj split` is interactive and will hang in agent environments. To divide a commit, use `jj restore` to move changes out, then create separate commits manually.
+**Warning**: `jj split` can launch an editor and hang. For disjoint whole paths, use `jj commit -m "type(scope): description" <paths>`. For independent concerns in one path, use verified noninteractive `jj-hunk` selections or stop for input. `jj restore` discards/replaces content; it is not a splitting primitive.
 
 ### Absorbing Changes
 
@@ -312,31 +319,9 @@ jj git fetch -b <branch-name>
 
 After fetching, rebase your work onto the updated trunk: `jj rebase -d main`
 
-### Switching Between jj and git (Colocated Repos Only)
+### Colocated Repositories
 
-**This section only applies to colocated repos** (where both `.jj/` and `.git/` exist). In non-colocated repos, do not use git commands — they will corrupt jj state.
-
-In a colocated repository, you can use both jj and git commands with care:
-
-**Switching to git mode** (e.g., for merge workflows):
-```bash
-# First, ensure your jj working copy is clean
-jj st
-
-# Then checkout a branch with git
-git checkout <branch-name>
-```
-
-**Switching back to jj mode**:
-```bash
-# Use jj edit to resume working with jj
-jj edit <change-id>
-```
-
-**Important notes:**
-- Git may complain about uncommitted changes if jj's working copy differs from the git HEAD
-- ALWAYS ensure your work is committed in jj before switching to git
-- After git operations, jj will detect and incorporate the changes on next command
+When `.jj/` exists, use Jujutsu exclusively even when `.git/` also exists. Detached Git HEAD is normal in this layout, not a reason to run Git checkout/reset/rebase. Use native JJ history, bookmarks, squash, fetch, and push commands.
 
 ### Pushing Changes
 
@@ -353,7 +338,8 @@ jj git push -b main
 **Before pushing, ensure:**
 1. Your bookmark points to the correct commit (bookmarks don't auto-advance like git branches)
 2. The commits are refined and atomic
-3. The user has explicitly requested the push
+3. The user has explicitly requested the push; squash alone is not publication authorization
+4. Rewritten published history has explicit authorization and native remote-state guard intact. Never silently fetch and retry a rejected push against a changed remote head
 
 **IMPORTANT**: Unlike git branches, jj bookmarks do not automatically move when you create new commits. You must manually update them before pushing:
 
@@ -393,8 +379,8 @@ jj st
 1. **Review your commit**: `jj --no-pager show @` or `jj --no-pager diff --git`
 2. **Is it atomic?** One logical change per commit
 3. **Is the message clear?** Use imperative verb phrase in sentence case format with no full stop: e.g. "Add login endpoint", "Fix null pointer in payment processor", "Remove deprecated API endpoints"
-4. **Are there unrelated changes?** Use `jj restore` to move changes out, then create separate commits
-5. **Should changes be elsewhere?** Use `jj squash` or `jj absorb`
+4. **Are there unrelated changes?** Commit explicit path groups; use verified noninteractive hunk selections for same-file concerns. Never use `jj restore` to move changes out
+5. **Should changes be elsewhere?** Use `jj squash -m "message"` or `jj absorb` only within authorized scope
 
 ## Quick Reference
 
@@ -406,7 +392,7 @@ jj st
 | View diff | `jj --no-pager diff --git` |
 | New commit | `jj new -m "message"` (use `jj st` first; skip if `@` is empty) |
 | Edit commit | `jj edit <id>` |
-| Squash to parent | `jj squash` |
+| Squash to parent | `jj squash -m "message"` |
 | Auto-distribute | `jj absorb` |
 | Rebase | `jj rebase -d <destination>` |
 | Abandon commit | `jj abandon <id>` |

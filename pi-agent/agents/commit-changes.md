@@ -8,6 +8,7 @@ extensions: false
 skills: false
 model: litellm/low
 thinking: minimal
+max_turns: 9
 prompt_mode: replace
 ---
 

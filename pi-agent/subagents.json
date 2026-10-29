@@ -1,5 +1,5 @@
 {
-  "defaultMaxTurns": 8,
+  "defaultMaxTurns": 15,
   "graceTurns": 2,
   "rememberAgents": true,
   "outputTranscript": true,

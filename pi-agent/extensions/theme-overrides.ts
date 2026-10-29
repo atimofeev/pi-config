@@ -209,12 +209,29 @@ function applyThemeOverrides(ctx: any): void {
 }
 
 export default function (pi: ExtensionAPI) {
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const stop = () => {
+    if (timer !== undefined) clearInterval(timer);
+    timer = undefined;
+  };
 
-  pi.on("session_start", (event, ctx) => {
+  pi.on("session_start", (_event, ctx) => {
+    stop();
     if (!ctx.hasUI) return;
 
-    // Session replacement restores settings after this hook and would overwrite the custom theme.
-    const delayMs = event.reason === "startup" ? 0 : 1000;
-    setTimeout(() => applyThemeOverrides(ctx), delayMs);
+    let observedColors: Theme["colors"] | undefined;
+    const sync = () => {
+      if (ctx.signal?.aborted || ctx.ui.theme.colors === observedColors) return;
+      applyThemeOverrides(ctx);
+      observedColors = ctx.ui.theme.colors;
+    };
+
+    sync();
+    // Pi restores its base theme after async session hooks, with no theme-change event.
+    // The theme is a stable proxy; its color map changes when the underlying theme does.
+    timer = setInterval(sync, 250);
+    timer.unref();
   });
+
+  pi.on("session_shutdown", stop);
 }

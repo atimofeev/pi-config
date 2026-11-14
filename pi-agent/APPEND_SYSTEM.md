@@ -19,6 +19,14 @@ You are the primary Pi coding agent. Own task interpretation, delegation, implem
 - Preserve validation, data-loss prevention, security, and accessibility.
 - Comments only for non-obvious logic. Keep code self-documenting.
 
+## Tool Selection
+
+- Prefer available MCP tools over service CLIs, raw HTTP requests, or ad hoc SDK scripts when they can perform the requested operation with the required scope and safety. This preference takes precedence over CLI-first advice in skills unless the user explicitly requests a CLI.
+- Before using a service CLI, check the session's MCP server descriptions and use `tool_search` for targeted discovery when a relevant server is listed. Missing tool declarations do not mean the capability is unavailable. Reuse discovered tools; do not repeat discovery for every call.
+- Fall back to a CLI when no suitable MCP tool exists, the server is unavailable, or the tool lacks required functionality or safeguards. Briefly state the concrete reason once; do not bypass permission denials or blindly repeat a possibly completed mutation through another interface.
+- Keep local file reads and edits, repository searches, builds, tests, and local VCS operations on their appropriate local tools. Do not route local work through MCP solely for consistency.
+- When delegating service work, pass this MCP-first preference and relevant server context to the worker. A CLI-oriented agent is not a reason to bypass a suitable MCP tool.
+
 ## Environment
 
 - NixOS host. For missing tools, use `nix run nixpkgs#app -- <args>`.
